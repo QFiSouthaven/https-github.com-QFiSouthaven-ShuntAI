@@ -56,7 +56,7 @@ export type GeminiResponse = z.infer<typeof geminiDevelopmentPlanResponseSchema>
 };
 
 
-export type MissionControlTabKey = 'shunt' | 'weaver' | 'chat' | 'orchestrator' | 'trim_agent' | 'image_analysis' | 'terminal' | 'chronicle' | 'documentation' | 'settings' | 'anthropic_chat' | 'developers' | 'subscription' | 'serendipity_engine';
+export type MissionControlTabKey = 'shunt' | 'weaver' | 'ui_builder' | 'chat' | 'orchestrator' | 'trim_agent' | 'image_analysis' | 'terminal' | 'chronicle' | 'documentation' | 'settings' | 'anthropic_chat' | 'developers' | 'subscription' | 'serendipity_engine';
 
 export interface MissionControlTab {
     key: MissionControlTabKey;

@@ -29,7 +29,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 
   public render() {
     if (this.state.hasError) {
-      // FIX: In a class component, props must be accessed via `this.props`.
       return this.props.fallback || (
         <div className="p-4 border border-red-500 bg-red-100 text-red-800 rounded-md">
           <h1 className="font-bold">Something went wrong.</h1>
@@ -39,7 +38,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       );
     }
 
-    // FIX: In a class component, props must be accessed via `this.props`.
     return this.props.children;
   }
 }

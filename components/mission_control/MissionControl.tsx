@@ -3,7 +3,7 @@ import React, { useState, useCallback, lazy, Suspense } from 'react';
 import {
     SparklesIcon, BrainIcon, BookIcon, HistoryIcon, ServerIcon,
     ChatBubbleLeftRightIcon, PhotoIcon, DocumentIcon, Cog6ToothIcon, BoltIcon, CodeIcon, StarIcon,
-    TerminalIcon
+    TerminalIcon, ViewfinderCircleIcon
 } from '../icons';
 import { MissionControlTab, MissionControlTabKey } from '../../types';
 import Loader from '../Loader';
@@ -18,6 +18,7 @@ import { audioService } from '../../services/audioService';
 // Lazy load components for code splitting and on-demand loading
 const Shunt = lazy(() => import('../shunt/Shunt'));
 const Weaver = lazy(() => import('../weaver/Weaver'));
+const UIBuilder = lazy(() => import('../ui_builder/UIBuilder'));
 const Chat = lazy(() => import('../chat/Chat'));
 const Orchestrator = lazy(() => import('./Orchestrator'));
 const TrimAgent = lazy(() => import('../trim_agent/TrimAgent'));
@@ -32,6 +33,7 @@ const Terminal = lazy(() => import('../terminal/Terminal'));
 const tabs: MissionControlTab[] = [
     { key: 'shunt', label: 'Shunt', icon: <SparklesIcon className="w-5 h-5" />, component: Shunt },
     { key: 'weaver', label: 'Weaver', icon: <BrainIcon className="w-5 h-5" />, component: Weaver },
+    { key: 'ui_builder', label: 'UI Builder', icon: <ViewfinderCircleIcon className="w-5 h-5" />, component: UIBuilder },
     { key: 'chat', label: 'Chat', icon: <ChatBubbleLeftRightIcon className="w-5 h-5" />, component: Chat },
     { key: 'orchestrator', label: 'Orchestrator', icon: <ServerIcon className="w-5 h-5" />, component: Orchestrator },
     { key: 'trim_agent', label: 'TRIM Agent', icon: <BoltIcon className="w-5 h-5" />, component: TrimAgent },
