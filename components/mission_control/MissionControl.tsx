@@ -58,16 +58,48 @@ const LoadingFallback = () => (
 
 const MissionControl: React.FC = () => {
     const [activeTabKey, setActiveTabKey] = useState<MissionControlTabKey>('shunt');
+    const [exitingTabKey, setExitingTabKey] = useState<MissionControlTabKey | null>(null);
+    const [activationTimestamps, setActivationTimestamps] = useState<Partial<Record<MissionControlTabKey, number>>>({
+        shunt: Date.now(), // Initialize the first tab on load
+    });
     const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
     const [isMailboxModalOpen, setIsMailboxModalOpen] = useState(false);
     
     const handleTabClick = useCallback((tabKey: MissionControlTabKey) => {
-        setActiveTabKey(tabKey);
-        audioService.playSound('tab_switch');
-    }, []);
+        if (tabKey === activeTabKey || exitingTabKey) { // Prevent clicks during animation or on the same tab
+            return;
+        }
+
+        const now = Date.now();
+        const currentTabActivationTime = activationTimestamps[activeTabKey] || 0;
+        const timeOnCurrentTab = now - currentTabActivationTime;
+        const TWO_MINUTES_MS = 2 * 60 * 1000;
+
+        // Always update the activation time for the new tab.
+        setActivationTimestamps(prev => ({ ...prev, [tabKey]: now }));
+
+        if (timeOnCurrentTab > TWO_MINUTES_MS) {
+            // Animate if user has been on the current tab for more than 2 minutes
+            setExitingTabKey(activeTabKey);
+            setActiveTabKey(tabKey);
+            audioService.playSound('tab_switch');
+            
+            setTimeout(() => {
+                setExitingTabKey(null);
+            }, 700); // Match CSS animation duration
+        } else {
+            // Switch instantly for rapid navigation
+            setActiveTabKey(tabKey);
+            audioService.playSound('click'); // Use a more subtle click sound for fast switches
+        }
+    }, [activeTabKey, exitingTabKey, activationTimestamps]);
 
     const activeTab = tabs.find(tab => tab.key === activeTabKey);
-    const ActiveComponent = activeTab ? activeTab.component : () => <div>Select a tab</div>;
+    const ActiveComponent = activeTab ? activeTab.component : null;
+    
+    const exitingTab = tabs.find(tab => tab.key === exitingTabKey);
+    const ExitingComponent = exitingTab ? exitingTab.component : null;
+
 
     const { undo, redo, canUndo, canRedo } = useUndoRedoContext();
 
@@ -86,10 +118,31 @@ const MissionControl: React.FC = () => {
                         onOpenMailbox={() => setIsMailboxModalOpen(true)}
                     />
                 </header>
-                <div className="flex-grow relative overflow-hidden">
+                <div className="flex-grow relative overflow-hidden tab-container">
                     <ActiveTabProvider activeTab={activeTabKey}>
                         <Suspense fallback={<LoadingFallback />}>
-                            <ActiveComponent />
+                            {ExitingComponent && (
+                                <div key={exitingTabKey} className="tab-pane tab-exit">
+                                    <ExitingComponent />
+                                    <div className="neon-outline-wrapper">
+                                        <div className="neon-line neon-line-top"></div>
+                                        <div className="neon-line neon-line-right"></div>
+                                        <div className="neon-line neon-line-bottom"></div>
+                                        <div className="neon-line neon-line-left"></div>
+                                    </div>
+                                </div>
+                            )}
+                            {ActiveComponent && (
+                                <div key={activeTabKey} className={`tab-pane ${exitingTabKey ? 'tab-enter' : ''}`}>
+                                    <ActiveComponent />
+                                    <div className="neon-outline-wrapper">
+                                        <div className="neon-line neon-line-top"></div>
+                                        <div className="neon-line neon-line-right"></div>
+                                        <div className="neon-line neon-line-bottom"></div>
+                                        <div className="neon-line neon-line-left"></div>
+                                    </div>
+                                </div>
+                            )}
                         </Suspense>
                     </ActiveTabProvider>
                 </div>

@@ -80,7 +80,7 @@ code {
   }
 }
 
-.header-glow {
+.animations-enabled .header-glow {
   animation: header-glow-animation 0.5s ease-in-out;
 }
 
@@ -90,9 +90,130 @@ code {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.context-panel-animated {
+.animations-enabled .context-panel-animated {
   animation: panel-fade-in 0.5s ease-out;
 }
+
+/* --- Tab Transition Animations --- */
+.tab-container {
+  position: relative;
+  perspective: 1500px;
+  transform-style: preserve-3d;
+}
+
+.tab-pane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden; /* Prevent flickering during 3D transforms */
+  transform-origin: center center;
+  transform-style: preserve-3d;
+}
+
+/* Enter Animation: Swing in from the right */
+@keyframes deckEnter {
+  from {
+    opacity: 0;
+    transform: translateX(50%) rotateY(-60deg) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) rotateY(0deg) scale(1);
+  }
+}
+
+.animations-enabled .tab-pane.tab-enter {
+  animation: deckEnter 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; /* Springy ease */
+  z-index: 10;
+}
+
+/* Exit Animation: Swing out to the left */
+@keyframes deckExit {
+  from {
+    opacity: 1;
+    transform: translateX(0) rotateY(0deg) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-50%) rotateY(60deg) scale(0.9);
+  }
+}
+
+.animations-enabled .tab-pane.tab-exit {
+  animation: deckExit 0.7s cubic-bezier(0.36, 0, 0.66, -0.56) forwards; /* Anticipatory ease */
+  z-index: 5;
+}
+
+/* --- Enhanced Neon Outline Trace --- */
+.neon-outline-wrapper {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    border-bottom-right-radius: 0.5rem; /* Matches main container rounding */
+}
+
+.neon-line {
+    position: absolute;
+    background-color: #d946ef; /* fuchsia-500 */
+    box-shadow: 0 0 6px #d946ef, 0 0 12px #d946ef;
+}
+
+.neon-line-top {
+    top: 0; left: 0;
+    width: 100%; height: 2px;
+    transform-origin: left;
+    transform: scaleX(0);
+}
+.neon-line-right {
+    top: 0; right: 0;
+    width: 2px; height: 100%;
+    transform-origin: top;
+    transform: scaleY(0);
+}
+.neon-line-bottom {
+    bottom: 0; right: 0;
+    width: 100%; height: 2px;
+    transform-origin: right;
+    transform: scaleX(0);
+}
+.neon-line-left {
+    bottom: 0; left: 0;
+    width: 2px; height: 100%;
+    transform-origin: bottom;
+    transform: scaleY(0);
+}
+
+/* Keyframe for scaling the lines into view */
+@keyframes trace-x { to { transform: scaleX(1); } }
+@keyframes trace-y { to { transform: scaleY(1); } }
+
+/* Apply sequenced animations to the entering tab's lines */
+.animations-enabled .tab-enter .neon-line-top {
+    animation: trace-x 0.15s ease-out 0.1s forwards;
+}
+.animations-enabled .tab-enter .neon-line-right {
+    animation: trace-y 0.15s ease-out 0.25s forwards;
+}
+.animations-enabled .tab-enter .neon-line-bottom {
+    animation: trace-x 0.15s ease-out 0.4s forwards;
+}
+.animations-enabled .tab-enter .neon-line-left {
+    animation: trace-y 0.15s ease-out 0.55s forwards;
+}
+
+/* Fade out for the exiting tab's outline */
+@keyframes simple-fade-out { to { opacity: 0; } }
+
+.animations-enabled .tab-exit .neon-outline-wrapper {
+    opacity: 1; /* Start visible */
+    animation: simple-fade-out 0.3s ease-out forwards;
+}
+
 
 /* --- Modal Animations --- */
 .modal-backdrop {
@@ -103,7 +224,7 @@ code {
     opacity: 0;
     transform: scale(0.95);
 }
-.modal-content.open {
+.animations-enabled .modal-content.open {
     opacity: 1;
     transform: scale(1);
 }
@@ -131,7 +252,7 @@ code {
   display: flex;
   flex-direction: column;
 }
-.node-details-panel.open {
+.animations-enabled .node-details-panel.open {
   transform: translateX(0);
 }
 
@@ -144,7 +265,7 @@ code {
 button, select, input, textarea {
     transition: all 0.2s ease-in-out;
 }
-button:active, select:active {
+.animations-enabled button:active, .animations-enabled select:active {
     transform: scale(0.98);
 }
 
@@ -199,6 +320,9 @@ button:active, select:active {
   flex-direction: column;
   z-index: 999;
   overflow: hidden;
+}
+
+.animations-enabled .mia-panel {
   animation: mia-fade-in 0.3s ease-out;
 }
 
@@ -532,7 +656,7 @@ button:active, select:active {
   from { opacity: 0; transform: translateY(-5px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.mia-agent-swarm-log-line {
+.animations-enabled .mia-agent-swarm-log-line {
   margin: 0;
   padding: 2px 0;
   white-space: pre-wrap;
@@ -547,7 +671,7 @@ button:active, select:active {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
-.mia-agent-swarm-log-thinking {
+.animations-enabled .mia-agent-swarm-log-thinking {
   font-style: italic;
   color: #aaa;
   animation: typing-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
@@ -795,7 +919,7 @@ button:active, select:active {
   }
 }
 
-.awareness-notice {
+.animations-enabled .awareness-notice {
   animation: awareness-animation 6s ease-in-out infinite;
   text-align: center;
   padding: 8px;
@@ -852,7 +976,7 @@ button:active, select:active {
 @keyframes blink {
   50% { opacity: 0; }
 }
-.terminal-cursor {
+.animations-enabled .terminal-cursor {
   width: 8px;
   height: 1.2em;
   background: #e0e0e0;
