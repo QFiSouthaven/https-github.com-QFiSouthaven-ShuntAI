@@ -1,6 +1,4 @@
-
 // hooks/useUndoRedo.ts
-// FIX: Imported `SetStateAction` to resolve the 'React' namespace error.
 import { useState, useCallback, SetStateAction } from 'react';
 
 type History<T> = {
@@ -51,7 +49,6 @@ export const useUndoRedo = <T>(initialPresent: T) => {
     });
   }, []);
 
-  // FIX: Used `SetStateAction` directly to resolve the namespace error.
   const set = useCallback((newPresentOrFn: SetStateAction<T>) => {
     setState((current) => {
       const newPresent = typeof newPresentOrFn === 'function'

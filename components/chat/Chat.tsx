@@ -1,180 +1,122 @@
-
-
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Chat as GeminiChat } from '@google/genai';
-import { startChat } from '../../services/geminiService';
+// components/chat/Chat.tsx
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { GoogleGenAI, Chat as GeminiChat } from "@google/genai";
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
-import { DownloadIcon } from '../icons';
 import TabFooter from '../common/TabFooter';
 import { useTelemetry } from '../../context/TelemetryContext';
-import { logFrontendError, ErrorSeverity } from '../../utils/errorLogger';
 import { audioService } from '../../services/audioService';
 
 interface Message {
+  id: string;
   role: 'user' | 'model' | 'error';
   content: string;
 }
 
 const Chat: React.FC = () => {
-  const [chat, setChat] = useState<GeminiChat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const chatRef = useRef<GeminiChat | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { versionControlService } = useTelemetry();
 
   useEffect(() => {
-    let newChat: GeminiChat | null = null;
-    try {
-      let loadedHistory = false;
-      if (versionControlService) {
-          const versions = versionControlService.getVersions('chat_conversation_history');
-          if (versions.length > 0) {
-              const latestContent = versionControlService.getVersionContent(versions[0].versionId);
-              if (latestContent) {
-                  try {
-                      const loadedMessages: Message[] = JSON.parse(latestContent);
-                      const historyForAI = loadedMessages
-                        .filter(msg => msg.role === 'user' || msg.role === 'model')
-                        .map(msg => ({
-                            role: msg.role as 'user' | 'model',
-                            parts: [{ text: msg.content }]
-                        }));
-                      
-                      newChat = startChat(historyForAI);
-                      setMessages(loadedMessages);
-                      loadedHistory = true;
-                  } catch (e) {
-                      logFrontendError(e, ErrorSeverity.Low, { context: 'Chat.useEffect - Failed to parse chat history' });
-                  }
-              }
-          }
-      }
-      
-      if (!loadedHistory) {
-          newChat = startChat();
-          setMessages([{ role: 'model', content: 'Hello! How can I help you today?' }]);
-      }
-      setChat(newChat);
+    const initChat = () => {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        chatRef.current = ai.chats.create({
+            model: 'gemini-2.5-pro',
+            config: {
+                thinkingConfig: { thinkingBudget: 32768 },
+            },
+            history: messages.filter(m => m.role !== 'error').map(m => ({
+                role: m.role,
+                parts: [{ text: m.content }]
+            }))
+        });
+    };
+    initChat();
+  }, []); // Initialize chat only once
 
-    } catch (e) {
-      logFrontendError(e, ErrorSeverity.Critical, { context: 'Chat.useEffect - Failed to start Gemini chat session' });
-      setMessages([{ role: 'error', content: `Failed to initialize chat session. ${e instanceof Error ? e.message : ''}` }]);
-      setChat(null);
-    }
-  }, [versionControlService]);
-
-
-  const scrollToBottom = () => {
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  }, [messages]);
+  
+  const saveChatHistory = useCallback(() => {
+      versionControlService?.captureVersion(
+          'chat_export',
+          `chat_session_${new Date().toISOString()}`,
+          JSON.stringify(messages, null, 2),
+          'user_action',
+          'User saved chat session'
+      );
+      alert('Chat history saved to Chronicle!');
+  }, [messages, versionControlService]);
 
-  useEffect(scrollToBottom, [messages, isLoading]);
-
-  const handleSendMessage = useCallback(async (messageText: string) => {
-    if (isLoading || !chat) {
-        if (!chat) {
-            setMessages(prev => [...prev, { role: 'error', content: 'Cannot send message: The chat session is not active. Please try reloading.' }]);
-        }
-        return;
-    }
-
-    const userMessage: Message = { role: 'user', content: messageText };
+  const onSendMessage = useCallback(async (messageText: string) => {
+    setIsLoading(true);
+    const userMessage: Message = { id: Date.now().toString(), role: 'user', content: messageText };
     setMessages(prev => [...prev, userMessage]);
     audioService.playSound('send');
-    setIsLoading(true);
+    
+    // Ensure chat is initialized
+    if (!chatRef.current) {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        chatRef.current = ai.chats.create({
+            model: 'gemini-2.5-pro',
+            config: {
+                thinkingConfig: { thinkingBudget: 32768 },
+            },
+        });
+    }
 
     try {
-        const stream = await chat.sendMessageStream({ message: messageText });
-        
-        let modelResponse = '';
-        setMessages(prev => [...prev, { role: 'model', content: '' }]);
+      const stream = await chatRef.current.sendMessageStream({ message: messageText });
+      
+      let fullResponse = '';
+      const assistantMessageId = (Date.now() + 1).toString();
+      
+      // Add a placeholder for the assistant's message
+      setMessages(prev => [...prev, { id: assistantMessageId, role: 'model', content: '', isLoading: true }]);
 
-        for await (const chunk of stream) {
-            modelResponse += chunk.text;
-            setMessages(prev => {
-                const newMessages = [...prev];
-                newMessages[newMessages.length - 1] = { role: 'model', content: modelResponse };
-                return newMessages;
-            });
-        }
-        
-        audioService.playSound('receive');
-        // After the final response, save the complete history
-        if (versionControlService) {
-            setMessages(currentMessages => {
-                versionControlService.captureVersion(
-                    'chat_export',
-                    'chat_conversation_history',
-                    JSON.stringify(currentMessages, null, 2),
-                    'ai_response',
-                    `Chat updated. Last message: "${messageText.substring(0, 50)}..."`,
-                    { messageCount: currentMessages.length }
-                );
-                return currentMessages;
-            });
-        }
+      for await (const chunk of stream) {
+        fullResponse += chunk.text;
+        setMessages(prev => prev.map(m => m.id === assistantMessageId ? { ...m, content: fullResponse } : m));
+      }
 
+      // Final update to remove loading state
+      setMessages(prev => prev.map(m => m.id === assistantMessageId ? { ...m, isLoading: false } : m));
+      audioService.playSound('receive');
+      
     } catch (error) {
-      logFrontendError(error, ErrorSeverity.High, { context: 'Chat.handleSendMessage' });
-      const errorMessage: Message = { 
-        role: 'error', 
-        content: `Sorry, something went wrong. Please try again.\n\n**Details:** ${error instanceof Error ? error.message : 'An unknown error occurred'}`
-      };
+      console.error(error);
+      const errorMessage: Message = { id: (Date.now() + 1).toString(), role: 'error', content: 'Sorry, I encountered an error. Please try again.' };
       setMessages(prev => [...prev, errorMessage]);
+      audioService.playSound('error');
     } finally {
       setIsLoading(false);
     }
-  }, [chat, isLoading, versionControlService]);
-  
-  const handleExport = useCallback(() => {
-    if (messages.length === 0) {
-      return;
-    }
-
-    const dataStr = JSON.stringify(messages, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `conversation-${new Date().toISOString()}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, [messages]);
+  }, []);
 
   return (
     <div className="flex flex-col h-full bg-gray-800/30">
-      <div className="p-3 border-b border-gray-700/50 flex justify-between items-center flex-shrink-0">
-        <h2 className="font-semibold text-gray-300">Conversation</h2>
-        <button
-          onClick={handleExport}
-          disabled={messages.length === 0}
-          className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-md transition-all duration-200 bg-gray-700/50 border border-gray-600/50 text-gray-300 hover:bg-gray-700/80 hover:border-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          aria-label="Export conversation to JSON"
-        >
-          <DownloadIcon className="w-4 h-4" />
-          <span>Export JSON</span>
-        </button>
-      </div>
-      <div className="flex-grow p-4 md:p-6 overflow-y-auto">
-        <div className="max-w-3xl mx-auto space-y-6">
-          {messages.map((msg, index) => (
-            <ChatMessage key={index} role={msg.role} content={msg.content} />
-          ))}
-          {isLoading && (
-             <ChatMessage role="model" content="" isLoading={true} />
-          )}
-          <div ref={messagesEndRef} />
+        <div className="flex-grow p-4 md:p-6 overflow-y-auto">
+            <div className="max-w-4xl mx-auto space-y-6">
+                {messages.map((msg, index) => (
+                    <ChatMessage key={msg.id} role={msg.role} content={msg.content} isLoading={isLoading && index === messages.length -1} />
+                ))}
+                {isLoading && messages[messages.length-1]?.role !== 'model' && (
+                     <ChatMessage key="loading" role="model" content="" isLoading={true} />
+                )}
+                 <div ref={messagesEndRef} />
+            </div>
         </div>
-      </div>
-      <div className="p-4 md:p-6 bg-gray-900/30 border-t border-gray-700/50">
-        <div className="max-w-3xl mx-auto">
-          <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+        <div className="flex-shrink-0 p-4 md:p-6 bg-gray-900/50 border-t border-gray-700/50">
+            <div className="max-w-4xl mx-auto">
+                 {messages.length > 0 && <button onClick={saveChatHistory} className='text-xs text-gray-400 hover:text-white mb-2'>Save Chat History</button>}
+                <ChatInput onSendMessage={onSendMessage} isLoading={isLoading} />
+            </div>
         </div>
-      </div>
-      <TabFooter />
+        <TabFooter />
     </div>
   );
 };

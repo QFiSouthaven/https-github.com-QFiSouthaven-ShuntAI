@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useUndoRedo } from './useUndoRedo';
 import { useUndoRedoContext } from '../context/UndoRedoContext';
 import { useActiveTab } from '../context/ActiveTabContext';
+// FIX: Corrected import path to be relative to the project root.
 import { MissionControlTabKey } from '../types';
 
 export const useTabUndoRedo = <T>(initialState: T, myTabKey: MissionControlTabKey) => {

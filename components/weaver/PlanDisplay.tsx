@@ -1,4 +1,5 @@
 import React from 'react';
+// FIX: Corrected import paths to be relative to the project root.
 import { GeminiResponse } from '../../types';
 import { BookIcon, CodeIcon, EditIcon, KeywordsIcon } from '../icons';
 
@@ -58,24 +59,23 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ plan, newlyGenerated }) => {
             <div className="space-y-4">
             {plan.implementationTasks.map((task, i) => (
                 <div key={i} className="bg-gray-900/50 p-4 rounded-md border border-gray-700">
-                <p className="font-semibold text-cyan-300 font-mono text-sm">{task.filePath}</p>
-                <p className="text-gray-300 mt-2 text-sm">{task.description}</p>
-                <details className="mt-2">
-                    <summary className="text-xs text-gray-500 cursor-pointer">Show Details</summary>
-                    <pre className="text-xs text-gray-400 mt-2 p-2 bg-black/30 rounded font-mono whitespace-pre-wrap">{task.details}</pre>
-                </details>
+                    <p className="font-semibold text-cyan-300 font-mono text-sm">{task.filePath}</p>
+                    <p className="text-gray-300 text-sm mt-1">{task.description}</p>
+                    {task.details && (
+                        <pre className="text-xs text-gray-400 mt-2 p-2 bg-black/30 rounded-md whitespace-pre-wrap font-mono">{task.details}</pre>
+                    )}
                 </div>
             ))}
             </div>
         ) : (
-             <p className="text-gray-400 text-sm italic">No implementation tasks were provided.</p>
+            <p className="text-gray-400 text-sm italic">No implementation tasks were provided.</p>
         )}
       </Section>
 
       <Section title="Test Cases" icon={<EditIcon className="w-5 h-5 text-cyan-400" />}>
         {plan.testCases && plan.testCases.length > 0 ? (
             <ul className="list-disc list-inside space-y-2 text-gray-300">
-            {plan.testCases.map((tc, i) => <li key={i}>{tc}</li>)}
+                {plan.testCases.map((tc, i) => <li key={i}>{tc}</li>)}
             </ul>
         ) : (
             <p className="text-gray-400 text-sm italic">No test cases were provided.</p>

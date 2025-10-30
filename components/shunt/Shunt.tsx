@@ -1,274 +1,211 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import { ShuntAction } from '../../types';
+// components/shunt/Shunt.tsx
+import React, { useState, useCallback } from 'react';
+import InputPanel from './InputPanel';
+import ControlPanel from './ControlPanel';
+import OutputPanel from './OutputPanel';
 import { performShunt } from '../../services/geminiService';
-import { useTelemetry } from '../../context/TelemetryContext';
-import InputPanel from '../InputPanel';
-import ControlPanel from '../ControlPanel';
-import OutputPanel from '../OutputPanel';
+import { ShuntAction, TokenUsage } from '../../types';
 import { useValidation } from '../../hooks/useValidation';
+import { useTelemetry } from '../../context/TelemetryContext';
 import TabFooter from '../common/TabFooter';
-import { useTabUndoRedo } from '../../hooks/useTabUndoRedo';
-import { MissionControlTabKey } from '../../types';
-import { parseSkillPackagePlan } from '../../services/skillParser';
-import { useMailbox } from '../../context/MailboxContext';
 import { audioService } from '../../services/audioService';
 
-const DEMO_TEXT = `React is a free and open-source front-end JavaScript library for building user interfaces based on components. It is maintained by Meta and a community of individual developers and companies.
+const DEMO_TEXT = `{
+  "id": "001",
+  "type": "donut",
+  "name": "Cake",
+  "ppu": 0.55,
+  "batters":
+    {
+      "batter":
+        [
+          { "id": "1001", "type": "Regular" },
+          { "id": "1002", "type": "Chocolate" },
+          { "id": "1003", "type": "Blueberry" },
+          { "id": "1004", "type": "Devil's Food" }
+        ]
+    },
+  "topping":
+    [
+      { "id": "5001", "type": "None" },
+      { "id": "5002", "type": "Glazed" },
+      { "id": "5005", "type": "Sugar" },
+      { "id": "5007", "type": "Powdered Sugar" },
+      { "id": "5006", "type": "Chocolate with Sprinkles" },
+      { "id": "5003", "type": "Chocolate" },
+      { "id": "5004", "type": "Maple" }
+    ]
+}`;
 
-React can be used as a base in the development of single-page, mobile, or server-rendered applications with frameworks like Next.js. Because React is only concerned with the user interface and rendering components to the DOM, React applications often rely on libraries for routing and other client-side functionality.`;
-
-const MAX_INPUT_LENGTH = 1000000;
-
-interface ShuntState {
-  inputText: string;
-  outputText: string;
-}
+const MAX_INPUT_LENGTH = 15000;
 
 const Shunt: React.FC = () => {
-  const { telemetryService, versionControlService, updateTelemetryContext } = useTelemetry();
-  const { deliverFiles } = useMailbox();
-
-  const { state: shuntState, set: setShuntState } = useTabUndoRedo<ShuntState>({
-    inputText: '',
-    outputText: '',
-  }, MissionControlTabKey.Shunt);
-
-  const { inputText, outputText } = shuntState;
-  
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [inputText, setInputText] = useState('');
+  const [outputText, setOutputText] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeShunt, setActiveShunt] = useState<string | null>(null);
+  const [lastTokenUsage, setLastTokenUsage] = useState<TokenUsage | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-flash');
-  
-  const { errors: validationErrors, markAsTouched, reset: resetValidation } = useValidation(
+
+  const { telemetryService, versionControlService } = useTelemetry();
+
+  const { errors, isTouched, isValid, validate, markAsTouched, reset } = useValidation(
     inputText,
-    { maxLength: MAX_INPUT_LENGTH },
-    { maxLength: `Input cannot exceed ${MAX_INPUT_LENGTH} characters.` }
+    { required: true, maxLength: MAX_INPUT_LENGTH },
+    { required: 'Input cannot be empty.', maxLength: `Input cannot exceed ${MAX_INPUT_LENGTH} characters.` }
   );
 
-  useEffect(() => {
-    updateTelemetryContext({ tab: 'Shunt' });
-  }, [updateTelemetryContext]);
-  
-  const handleShunt = useCallback(async (action: ShuntAction) => {
+  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputText(event.target.value);
+  };
+
+  const handleShunt = useCallback(async (action: ShuntAction | string, textToProcess: string = inputText) => {
     markAsTouched();
-    if (!inputText.trim() || Object.keys(validationErrors).length > 0) {
-      if (!inputText.trim()) {
-          setError("Input content cannot be empty.");
-      } else {
-          setError(validationErrors.maxLength || "Please fix the validation errors.");
-      }
+    validate();
+    if (!isValid || isLoading) {
+      if (errors.required) setError(errors.required);
+      if (errors.maxLength) setError(errors.maxLength);
       return;
     }
 
-    audioService.playSound('send'); // ASMR Feedback for primary action
     setIsLoading(true);
     setError(null);
+    setOutputText('');
     setActiveShunt(action);
-    setShuntState(s => ({ ...s, outputText: '' }));
-
-    const startTime = Date.now();
+    audioService.playSound('send');
     
-    telemetryService?.recordEvent({
-      eventType: 'user_input',
-      interactionType: 'shunt_action',
-      tab: 'Shunt',
-      userInput: { action, inputTextLength: inputText.length },
-      modelUsed: selectedModel,
-    });
-
     try {
-      const { resultText, tokenUsage } = await performShunt(inputText, action, selectedModel);
-      const latency = Date.now() - startTime;
+      const { resultText, tokenUsage } = await performShunt(textToProcess, action as ShuntAction, selectedModel);
+      setOutputText(resultText);
+      setLastTokenUsage(tokenUsage);
+      audioService.playSound('receive');
       
-      setShuntState(s => ({ ...s, outputText: resultText }));
-      
-      if (action === ShuntAction.BUILD_A_SKILL) {
-        const files = parseSkillPackagePlan(resultText);
-        if (files.length > 0) {
-            await deliverFiles(files);
-            // Optionally, provide feedback to the user
-            console.log(`${files.length} skill files delivered to mailbox.`);
-        }
-      }
-
       telemetryService?.recordEvent({
         eventType: 'ai_response',
         interactionType: 'shunt_action',
         tab: 'Shunt',
-        userInput: { action },
-        aiOutput: { resultTextLength: resultText.length },
+        userInput: textToProcess.substring(0, 200),
+        aiOutput: resultText.substring(0, 200),
         outcome: 'success',
-        latency,
         tokenUsage,
-        modelUsed: selectedModel
+        modelUsed: selectedModel,
+        customData: { action }
       });
-      
-      versionControlService?.captureVersion(
-          'shunt_interaction',
-          'shunt_output',
-          JSON.stringify({ input: inputText, output: resultText, action }, null, 2),
-          'ai_response',
-          `Performed Shunt Action: ${action}`,
-          { action, tokenUsage }
-      );
-      audioService.playSound('success');
+      versionControlService?.captureVersion('shunt_interaction', 'shunt_output', JSON.stringify({ input: textToProcess, output: resultText, action, model: selectedModel, tokenUsage }, null, 2), 'ai_response', `Shunt action: ${action}`);
 
     } catch (e: any) {
-      const latency = Date.now() - startTime;
       const errorMessage = e.message || 'An unknown error occurred.';
       setError(errorMessage);
-      telemetryService?.recordEvent({
+      audioService.playSound('error');
+       telemetryService?.recordEvent({
         eventType: 'ai_response',
         interactionType: 'shunt_action',
         tab: 'Shunt',
-        userInput: { action },
-        aiOutput: { error: errorMessage },
         outcome: 'error',
-        latency,
-        modelUsed: selectedModel,
+        customData: { action, error: errorMessage }
       });
-      audioService.playSound('error');
     } finally {
       setIsLoading(false);
       setActiveShunt(null);
     }
-  }, [inputText, telemetryService, versionControlService, deliverFiles, setShuntState, validationErrors, markAsTouched, selectedModel]);
-  
+  }, [inputText, isLoading, isValid, markAsTouched, validate, errors, telemetryService, selectedModel, versionControlService]);
+
   const handleCombinedShunt = useCallback(async (draggedAction: ShuntAction, targetAction: ShuntAction) => {
     markAsTouched();
-    if (!inputText.trim() || Object.keys(validationErrors).length > 0) {
-      if (!inputText.trim()) {
-          setError("Input content cannot be empty.");
-      } else {
-          setError(validationErrors.maxLength || "Please fix the validation errors.");
-      }
-      return;
-    }
+    validate();
+    if (!isValid || isLoading) return;
 
-    audioService.playSound('send'); // ASMR Feedback for primary action
-    const combinedActionName = `${draggedAction} + ${targetAction}`;
+    const combinedActionName = `${draggedAction} -> ${targetAction}`;
     setIsLoading(true);
     setError(null);
+    setOutputText('');
     setActiveShunt(combinedActionName);
-    setShuntState(s => ({ ...s, outputText: '' }));
-
-    telemetryService?.recordEvent({
-      eventType: 'user_input',
-      interactionType: 'shunt_action_combined',
-      tab: 'Shunt',
-      userInput: { action: combinedActionName, inputTextLength: inputText.length },
-      modelUsed: selectedModel,
-    });
+    audioService.playSound('send');
+    
+    let intermediateText = '';
+    let finalTokenUsage: TokenUsage | null = null;
     
     try {
-      // Step 1: Perform dragged action
-      const { resultText: firstResult, tokenUsage: firstTokenUsage } = await performShunt(inputText, draggedAction, selectedModel);
+        // First action
+        const { resultText: firstResult, tokenUsage: firstUsage } = await performShunt(inputText, draggedAction, selectedModel);
+        intermediateText = firstResult;
+        
+        // Second action
+        const { resultText: secondResult, tokenUsage: secondUsage } = await performShunt(intermediateText, targetAction, selectedModel);
+        
+        finalTokenUsage = {
+            prompt_tokens: firstUsage.prompt_tokens + secondUsage.prompt_tokens,
+            completion_tokens: firstUsage.completion_tokens + secondUsage.completion_tokens,
+            total_tokens: firstUsage.total_tokens + secondUsage.total_tokens,
+            model: selectedModel,
+        };
 
-      // Step 2: Perform target action on the result of the first
-      const { resultText: finalResult, tokenUsage: secondTokenUsage } = await performShunt(firstResult, targetAction, selectedModel);
-      
-      setShuntState(s => ({ ...s, outputText: finalResult }));
-
-      telemetryService?.recordEvent({
-        eventType: 'ai_response',
-        interactionType: 'shunt_action_combined',
-        tab: 'Shunt',
-        userInput: { action: combinedActionName },
-        aiOutput: { resultTextLength: finalResult.length },
-        outcome: 'success',
-        tokenUsage: {
-          prompt_tokens: (firstTokenUsage.prompt_tokens ?? 0) + (secondTokenUsage.prompt_tokens ?? 0),
-          completion_tokens: (firstTokenUsage.completion_tokens ?? 0) + (secondTokenUsage.completion_tokens ?? 0),
-          total_tokens: (firstTokenUsage.total_tokens ?? 0) + (secondTokenUsage.total_tokens ?? 0),
-          model: firstTokenUsage.model,
-        },
-        modelUsed: selectedModel,
-      });
-      audioService.playSound('success');
+        setOutputText(secondResult);
+        setLastTokenUsage(finalTokenUsage);
+        audioService.playSound('receive');
 
     } catch (e: any) {
-      const errorMessage = e.message || 'An unknown error occurred during the combined action.';
-      setError(errorMessage);
-      telemetryService?.recordEvent({
-        eventType: 'ai_response',
-        interactionType: 'shunt_action_combined',
-        tab: 'Shunt',
-        userInput: { action: combinedActionName },
-        aiOutput: { error: errorMessage },
-        outcome: 'error',
-        modelUsed: selectedModel,
-      });
-      audioService.playSound('error');
+        const errorMessage = e.message || 'An unknown error occurred.';
+        setError(errorMessage);
+        audioService.playSound('error');
     } finally {
-      setIsLoading(false);
-      setActiveShunt(null);
+        setIsLoading(false);
+        setActiveShunt(null);
     }
-  }, [inputText, telemetryService, setShuntState, validationErrors, markAsTouched, selectedModel]);
 
-  const handleInputChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setError(null);
-    setShuntState(s => ({ ...s, inputText: event.target.value }));
-  };
-  
-  const handleInputBlur = () => {
-    markAsTouched();
-  };
+  }, [inputText, isLoading, isValid, markAsTouched, validate, selectedModel]);
   
   const handlePasteDemo = () => {
+    setInputText(DEMO_TEXT);
+    reset();
     setError(null);
-    resetValidation();
-    setShuntState({ inputText: DEMO_TEXT, outputText: '' });
   };
   
-  const handleFileLoad = (text: string) => {
+  const handleClear = () => {
+    setInputText('');
+    setOutputText('');
     setError(null);
-    resetValidation();
-    setShuntState({ inputText: text, outputText: '' });
+    setLastTokenUsage(null);
+    reset();
   };
-  
-  const handleClearFile = () => {
-    setError(null);
-    resetValidation();
-    setShuntState({ inputText: '', outputText: '' });
-    audioService.playSound('click'); // ASMR feedback for secondary action
-  };
-  
+
   return (
     <div className="flex flex-col h-full">
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4 md:p-6 flex-grow overflow-hidden">
-            <div className="xl:col-span-1 h-full overflow-y-auto">
-                <InputPanel
-                    value={inputText}
-                    onChange={handleInputChange}
-                    onBlur={handleInputBlur}
-                    onPasteDemo={handlePasteDemo}
-                    onFileLoad={handleFileLoad}
-                    onClearFile={handleClearFile}
-                    error={validationErrors.maxLength}
-                    maxLength={MAX_INPUT_LENGTH}
-                />
-            </div>
-            <div className="xl:col-span-1 h-full overflow-y-auto">
-                <ControlPanel
-                    onShunt={handleShunt}
-                    onCombinedShunt={handleCombinedShunt}
-                    isLoading={isLoading}
-                    activeShunt={activeShunt}
-                    selectedModel={selectedModel}
-                    onModelChange={setSelectedModel}
-                />
-            </div>
-            <div className="xl:col-span-1 h-full overflow-y-auto">
-                <OutputPanel
-                    text={outputText}
-                    isLoading={isLoading}
-                    error={error}
-                    activeShunt={activeShunt}
-                />
-            </div>
+      <div className="flex-grow p-4 md:p-6 grid grid-cols-1 xl:grid-cols-3 gap-6 overflow-auto">
+        <div className="xl:col-span-1">
+          <InputPanel
+            value={inputText}
+            onChange={handleInputChange}
+            onBlur={markAsTouched}
+            onPasteDemo={handlePasteDemo}
+            onFileLoad={(text) => setInputText(text)}
+            onClearFile={handleClear}
+            error={isTouched && Object.values(errors).length > 0 ? Object.values(errors)[0] : null}
+            maxLength={MAX_INPUT_LENGTH}
+            isLoading={isLoading}
+          />
         </div>
-        <TabFooter />
+        <div className="xl:col-span-1">
+          <ControlPanel
+            onShunt={(action) => handleShunt(action)}
+            onCombinedShunt={handleCombinedShunt}
+            isLoading={isLoading}
+            activeShunt={activeShunt}
+            selectedModel={selectedModel}
+            onModelChange={setSelectedModel}
+          />
+        </div>
+        <div className="xl:col-span-1">
+          <OutputPanel
+            text={outputText}
+            isLoading={isLoading}
+            error={error}
+            activeShunt={activeShunt}
+          />
+        </div>
+      </div>
+      <TabFooter />
     </div>
   );
 };

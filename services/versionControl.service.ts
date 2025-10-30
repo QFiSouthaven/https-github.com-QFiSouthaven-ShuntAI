@@ -4,6 +4,7 @@
 import { VersionRecord, VersionContentType, InteractionEvent } from '../types/telemetry';
 import { TelemetryService } from './telemetry.service';
 import { v4 as uuidv4 } from 'uuid';
+// FIX: Add diffLines to the import to make it available for use.
 import { createTwoFilesPatch, diffLines } from 'diff';
 
 

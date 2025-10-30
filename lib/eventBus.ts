@@ -1,5 +1,5 @@
 // lib/eventBus.ts
-import { MiaAlert } from '../features/mia/miaTypes';
+import { MiaAlert } from '../types';
 
 type Listener<T> = (payload: T) => void;
 

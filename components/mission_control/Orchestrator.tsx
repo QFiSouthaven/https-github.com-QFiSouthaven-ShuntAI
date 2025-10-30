@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import ReactFlow, { Background, Controls, MiniMap, useNodesState, useEdgesState, addEdge, OnConnect, Node } from 'reactflow';
-import { CheckIcon, CopyIcon, DocumentChartBarIcon, ErrorIcon, XMarkIcon } from '../icons';
+import { v4 as uuidv4 } from 'uuid';
+import { CheckIcon, CopyIcon, DocumentChartBarIcon, ErrorIcon, WifiIcon, XMarkIcon } from '../icons';
 import { useTelemetry } from '../../context/TelemetryContext';
 import { generateOrchestratorReport } from '../../services/geminiService';
 import TabFooter from '../common/TabFooter';
@@ -8,6 +9,7 @@ import FileUpload from '../common/FileUpload';
 import CustomOrchestratorNode from '../orchestrator/CustomOrchestratorNode';
 import { audioService } from '../../services/audioService';
 import NodeDetailsPanel from '../orchestrator/NodeDetailsPanel';
+import { useMiaContext } from '../../context/MiaContext';
 
 export interface OrchestratedItem {
   id: string;
@@ -74,7 +76,7 @@ const useOrchestratorItems = () => {
     );
   }, []);
 
-  return { items, loading, error, performAction, loadItems };
+  return { items, loading, error, performAction, loadItems, setItems };
 };
 
 const ReportModal: React.FC<{ state: ReportModalState, onClose: () => void }> = ({ state, onClose }) => {
@@ -99,8 +101,9 @@ const ReportModal: React.FC<{ state: ReportModalState, onClose: () => void }> = 
 };
 
 const Orchestrator: React.FC = () => {
-  const { items, loading, error: dataError, performAction, loadItems } = useOrchestratorItems();
+  const { items, loading, error: dataError, performAction, loadItems, setItems } = useOrchestratorItems();
   const { telemetryService, updateTelemetryContext } = useTelemetry();
+  const { addAlert } = useMiaContext();
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<'All' | OrchestratedItem['status']>('All');
   const [reportModalState, setReportModalState] = useState<ReportModalState>({ isOpen: false, isLoading: false, title: '', content: '', error: null });
@@ -109,14 +112,82 @@ const Orchestrator: React.FC = () => {
   const [selectedNode, setSelectedNode] = useState<OrchestratedItem | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [wsStatus, setWsStatus] = useState<'Connecting' | 'Connected' | 'Disconnected'>('Connecting');
   const nodeTypes = useMemo(() => ({ customOrchestratorNode: CustomOrchestratorNode }), []);
 
   useEffect(() => { updateTelemetryContext({ tab: 'Orchestrator' }); }, [updateTelemetryContext]);
+
+  // WebSocket Simulation Effect
+  useEffect(() => {
+    // Don't start simulation until initial data is loaded
+    if (loading || items.length === 0) return;
+
+    const connectTimeout = setTimeout(() => {
+        setWsStatus('Connected');
+        audioService.playSound('success');
+    }, 1500);
+
+    const messageInterval = setInterval(() => {
+        // Pick a random item to update
+        const randomIndex = Math.floor(Math.random() * items.length);
+        const itemToUpdate = items[randomIndex];
+        
+        // Pick a new, different status
+        const possibleStatuses: OrchestratedItem['status'][] = ['Running', 'Stopped', 'Pending', 'Error'];
+        const currentStatusIndex = possibleStatuses.indexOf(itemToUpdate.status);
+        possibleStatuses.splice(currentStatusIndex, 1);
+        const newStatus = possibleStatuses[Math.floor(Math.random() * possibleStatuses.length)];
+
+        // Update the state
+        setItems(prevItems => {
+            const newItems = prevItems.map(item => 
+                item.id === itemToUpdate.id 
+                ? { ...item, status: newStatus, lastUpdated: new Date().toISOString() }
+                : item
+            );
+            return newItems;
+        });
+
+        // Send a Mia alert
+        addAlert({
+            id: uuidv4(),
+            type: 'orchestrator_status_change',
+            severity: newStatus === 'Error' ? 'warning' : 'info',
+            title: `Orchestrator: ${itemToUpdate.name}`,
+            message: `Status changed from '${itemToUpdate.status}' to '${newStatus}'.`,
+            timestamp: new Date().toISOString(),
+        });
+
+    }, 4000); // Receive a message every 4 seconds
+
+    return () => {
+        clearTimeout(connectTimeout);
+        clearInterval(messageInterval);
+        setWsStatus('Disconnected');
+    };
+  }, [loading, items, setItems, addAlert]);
   
   const onConnect: OnConnect = useCallback((params) => {
+    const { source, target } = params;
+    if (!source || !target) return;
+
     audioService.playSound('node_connect');
-    setEdges((eds) => addEdge({ ...params, type: 'smoothstep', animated: true, style: { stroke: '#0891b2', strokeWidth: 2 } }, eds));
-  }, [setEdges]);
+
+    // Update the underlying data model to persist the new dependency.
+    setItems(prevItems =>
+      prevItems.map(item => {
+        // Find the target node of the connection
+        if (item.id === target) {
+          // Add the source node's ID to the target's dependencies, avoiding duplicates
+          const newDependencies = item.dependencies ? [...new Set([...item.dependencies, source])] : [source];
+          return { ...item, dependencies: newDependencies, lastUpdated: new Date().toISOString() };
+        }
+        return item;
+      })
+    );
+    // The main useEffect that builds nodes and edges will automatically handle the visual update.
+    // No direct `setEdges(addEdge(...))` call is needed, promoting a single source of truth.
+  }, [setItems]);
 
   const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
     setSelectedNode(node.data.item);
@@ -238,6 +309,14 @@ const Orchestrator: React.FC = () => {
               </select>
             </div>
             <div className='flex gap-2 flex-shrink-0'>
+                <div className="flex items-center gap-2 p-2 bg-gray-700/50 border border-gray-600 rounded-md text-gray-300 text-sm">
+                    <WifiIcon className={`w-5 h-5 ${
+                        wsStatus === 'Connected' ? 'text-green-400' :
+                        wsStatus === 'Connecting' ? 'text-yellow-400 animate-pulse' :
+                        'text-red-400'
+                    }`} />
+                    <span>{wsStatus}</span>
+                </div>
               <button onClick={() => handleGenerateReport('system')} disabled={!!activeReport} className="flex items-center gap-2 p-2 bg-gray-700/50 border border-gray-600 rounded-md text-gray-300 hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><DocumentChartBarIcon className="w-5 h-5" /><span className='text-sm hidden md:inline'>Analyze Graph</span></button>
             </div>
           </div>

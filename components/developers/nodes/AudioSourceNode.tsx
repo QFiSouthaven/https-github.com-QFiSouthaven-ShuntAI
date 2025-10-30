@@ -1,23 +1,23 @@
 // components/developers/nodes/AudioSourceNode.tsx
-import React, { memo, useState, useRef, ChangeEvent } from 'react';
+import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { UploadIcon, PaperAirplaneIcon } from '../../icons';
+import { PaperAirplaneIcon } from '../../icons';
 
-const AudioSourceNode = ({ data, selected }: NodeProps<{ label: string }>) => {
-    const [fileName, setFileName] = useState<string | null>(null);
-    const fileInputRef = useRef<HTMLInputElement>(null);
+interface AudioSourceData {
+    label: string;
+    selectedAsset?: string;
+    onChange: (id: string, data: any) => void;
+}
 
-    const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            setFileName(file.name);
-        }
-    };
+const mockAudioAssets = [
+    { value: '', label: 'Select an asset...' },
+    { value: 'sounds/ui_click.wav', label: 'ui_click.wav' },
+    { value: 'sounds/ui_hover.mp3', label: 'ui_hover.mp3' },
+    { value: 'music/background_loop.ogg', label: 'background_loop.ogg' },
+    { value: 'effects/explosion.wav', label: 'explosion.wav' },
+];
 
-    const handleButtonClick = () => {
-        fileInputRef.current?.click();
-    };
-
+const AudioSourceNode = ({ id, data, selected }: NodeProps<AudioSourceData>) => {
   return (
     <div className="relative">
       <div className={`
@@ -27,28 +27,25 @@ const AudioSourceNode = ({ data, selected }: NodeProps<{ label: string }>) => {
       `}>
           <header className="flex items-center gap-3 p-3 bg-gray-900/50 rounded-t-md border-b border-gray-700/50">
               <PaperAirplaneIcon className="w-5 h-5 text-gray-300" />
-              <h3 className="font-semibold text-gray-200 truncate flex-grow" title={data.label || 'Audio Source Node'}>
-                  {data.label || 'Audio Source Node'}
+              <h3 className="font-semibold text-gray-200 truncate flex-grow" title={data.label || 'Audio Source'}>
+                  {data.label || 'Audio Source'}
               </h3>
           </header>
           <main className="p-4 text-sm">
-            <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="audio/*"
-                className="hidden"
-            />
-            <button 
-                onClick={handleButtonClick}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-gray-300 hover:bg-gray-700 transition-colors"
+            <label htmlFor={`asset-select-${id}`} className="block text-xs text-gray-400 mb-1">Audio Asset</label>
+            <select 
+                id={`asset-select-${id}`}
+                value={data.selectedAsset || ''}
+                onChange={(e) => data.onChange(id, { ...data, selectedAsset: e.target.value })}
+                className="w-full p-2 bg-gray-700 border border-gray-600 rounded-md focus:ring-cyan-500 focus:border-cyan-500 text-gray-200 text-sm"
             >
-                <UploadIcon className="w-4 h-4" />
-                <span>Upload Audio File</span>
-            </button>
-            {fileName && (
-                <p className="text-xs text-cyan-300 font-mono mt-3 text-center truncate" title={fileName}>
-                    {fileName}
+                {mockAudioAssets.map(asset => (
+                    <option key={asset.value} value={asset.value}>{asset.label}</option>
+                ))}
+            </select>
+            {data.selectedAsset && (
+                <p className="text-xs text-cyan-300 font-mono mt-3 text-center truncate" title={data.selectedAsset}>
+                    {data.selectedAsset}
                 </p>
             )}
           </main>

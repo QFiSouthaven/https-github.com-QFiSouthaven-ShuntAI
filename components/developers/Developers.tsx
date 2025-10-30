@@ -8,7 +8,14 @@ import ReactFlow, {
   useEdgesState,
   addEdge,
   OnConnect,
-  Node,
+  Node as ReactFlowNode,
+  ReactFlowProvider,
+  useReactFlow,
+  useOnViewportChange,
+  NodeChange,
+  EdgeChange,
+  applyNodeChanges,
+  applyEdgeChanges,
 } from 'reactflow';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -17,131 +24,225 @@ import { audioService } from '../../services/audioService';
 import AudioSourceNode from './nodes/AudioSourceNode';
 import UIEventNode from './nodes/UIEventNode';
 import AudioOutputNode from './nodes/AudioOutputNode';
-import { CodeIcon, DeveloperIcon } from '../icons';
+import { DeveloperIcon } from '../icons';
+import { useSettings } from '../../context/SettingsContext';
+import { useTelemetry } from '../../context/TelemetryContext';
+import Toolbar from './Toolbar';
+import ContextMenu from './ContextMenu';
 
-const initialNodes: Node[] = [
-  {
-    id: 'audio-1',
-    type: 'audioSource',
-    position: { x: 100, y: 100 },
-    data: { label: 'Click Sound' },
-  },
-  {
-    id: 'event-1',
-    type: 'uiEvent',
-    position: { x: 100, y: 300 },
-    data: { label: 'Button Click' },
-  },
-  {
-    id: 'output-1',
-    type: 'audioOutput',
-    position: { x: 500, y: 200 },
-    data: {},
-  },
+const initialNodes: ReactFlowNode[] = [
+  { id: 'audio-1', type: 'audioSource', position: { x: 100, y: 100 }, data: { label: 'Click Sound', selectedAsset: '' } },
+  { id: 'event-1', type: 'uiEvent', position: { x: 100, y: 300 }, data: { label: 'UI Event Trigger' } },
+  { id: 'output-1', type: 'audioOutput', position: { x: 500, y: 200 }, data: {} },
 ];
 
-const Developers: React.FC = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
+const RF_STORAGE_KEY = 'aether-shunt-dev-canvas-state';
 
-  const nodeTypes = useMemo(() => ({ 
-      audioSource: AudioSourceNode,
-      uiEvent: UIEventNode,
-      audioOutput: AudioOutputNode,
-  }), []);
-  
-  const nodeTypesToAdd = [
-    { type: 'audioSource', label: 'Audio Source' },
-    { type: 'uiEvent', label: 'UI Event Trigger' },
-    { type: 'audioOutput', label: 'Audio Output' },
-  ];
+const DeveloperCanvas: React.FC = () => {
+    const { settings } = useSettings();
+    const { versionControlService } = useTelemetry();
+    const reactFlowInstance = useReactFlow();
 
-  const onConnect: OnConnect = useCallback(
-    (params) => {
-        audioService.playSound('node_connect');
-        setEdges((eds) => addEdge({ ...params, type: 'smoothstep', animated: true, style: { stroke: '#0891b2', strokeWidth: 2 } }, eds))
-    },
-    [setEdges]
-  );
+    const [nodes, setNodes] = useState<ReactFlowNode[]>(initialNodes);
+    const [edges, setEdges] = useState<any[]>([]);
+    const [menu, setMenu] = useState<any>(null);
+    const [clipboard, setClipboard] = useState<ReactFlowNode[] | null>(null);
 
-  const addNode = useCallback((type: string) => {
-    const newNode: Node = {
-      id: uuidv4(),
-      type,
-      position: {
-        x: Math.random() * (window.innerWidth / 3),
-        y: Math.random() * (window.innerHeight / 3),
+    const onNodesChange = useCallback((changes: NodeChange[]) => {
+      setNodes((nds) => applyNodeChanges(changes, nds));
+    }, [setNodes]);
+
+    const onEdgesChange = useCallback((changes: EdgeChange[]) => {
+      setEdges((eds) => applyEdgeChanges(changes, eds));
+    }, [setEdges]);
+
+    // Save state to localStorage on any change to nodes, edges, or viewport
+    useOnViewportChange({
+      onEnd: (viewport) => {
+        saveState(nodes, edges, viewport);
       },
-      data: { label: `New ${type} Node` },
-    };
-    setNodes((nds) => nds.concat(newNode));
-    audioService.playSound('click');
-  }, [setNodes]);
+    });
+    useEffect(() => {
+        saveState(nodes, edges, reactFlowInstance.getViewport());
+    }, [nodes, edges, reactFlowInstance]);
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setIsMenuOpen(false);
-      }
+    // Restore state from localStorage on initial mount
+    useEffect(() => {
+        const restoredState = restoreState();
+        if (restoredState) {
+            setNodes(restoredState.nodes || initialNodes);
+            setEdges(restoredState.edges || []);
+            reactFlowInstance.setViewport(restoredState.viewport);
+        }
+    }, []);
+    
+    const saveState = (nodesToSave: ReactFlowNode[], edgesToSave: any[], viewport: any) => {
+        const flowState = { nodes: nodesToSave, edges: edgesToSave, viewport };
+        localStorage.setItem(RF_STORAGE_KEY, JSON.stringify(flowState));
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
-  return (
-    <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-gray-700/50 flex-shrink-0 flex items-center justify-between">
-         <div className="flex items-center gap-2">
-            <DeveloperIcon className="w-6 h-6 text-cyan-400" />
-            <h2 className="font-semibold text-lg text-gray-300">Audio Feedback Orchestrator</h2>
-        </div>
-        <div className="relative" ref={menuRef}>
-            <button
-            onClick={() => setIsMenuOpen(prev => !prev)}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-gray-300 hover:bg-gray-700 transition-colors"
-            >
-                <CodeIcon className="w-5 h-5" />
-                Create Node
-            </button>
-            {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-gray-700 rounded-md shadow-lg z-20 border border-gray-600">
-                    {nodeTypesToAdd.map(node => (
-                        <button
-                            key={node.type}
-                            onClick={() => {
-                                addNode(node.type);
-                                setIsMenuOpen(false);
-                            }}
-                            className="block w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-600 first:rounded-t-md last:rounded-b-md"
-                        >
-                            {node.label}
-                        </button>
-                    ))}
+    const restoreState = () => {
+        const storedState = localStorage.getItem(RF_STORAGE_KEY);
+        if (storedState) {
+            return JSON.parse(storedState);
+        }
+        return null;
+    };
+
+    const nodeTypes = useMemo(() => ({ 
+        audioSource: AudioSourceNode,
+        uiEvent: UIEventNode,
+        audioOutput: AudioOutputNode,
+    }), []);
+  
+    const onNodeDataChange = useCallback((nodeId: string, newData: any) => {
+      setNodes((nds) => nds.map(node => 
+        node.id === nodeId 
+          ? { ...node, data: { ...node.data, ...newData } }
+          : node
+      ));
+    }, [setNodes]);
+
+    const addNode = useCallback((type: string, position: { x: number; y: number }) => {
+      const newNode: ReactFlowNode = {
+        id: uuidv4(),
+        type,
+        position,
+        data: {
+          label: `New ${type.replace(/([A-Z])/g, ' $1')}`,
+          onChange: onNodeDataChange, // Pass handler to node
+        },
+      };
+      setNodes((nds) => nds.concat(newNode));
+      audioService.playSound('click');
+    }, [setNodes, onNodeDataChange]);
+
+    const onPaneContextMenu = useCallback((event: React.MouseEvent) => {
+        event.preventDefault();
+        setMenu({
+          x: event.clientX,
+          y: event.clientY,
+        });
+    }, [setMenu]);
+    
+    const onConnect: OnConnect = useCallback((params) => {
+      audioService.playSound('node_connect');
+      setEdges((eds) => addEdge({ ...params, type: 'smoothstep', animated: true, style: { stroke: '#d946ef', strokeWidth: 2 } }, eds));
+    }, [setEdges]);
+
+    // Toolbar Actions
+    const onSaveSnapshot = useCallback(() => {
+        if (!versionControlService) return;
+        const graphState = JSON.stringify({ nodes, edges, viewport: reactFlowInstance.getViewport() }, null, 2);
+        versionControlService.captureVersion(
+            'developer_canvas_snapshot',
+            'developer-canvas',
+            graphState,
+            'user_action',
+            'Saved developer canvas snapshot'
+        );
+        alert('Canvas snapshot saved to Chronicle!');
+        audioService.playSound('success');
+    }, [versionControlService, nodes, edges, reactFlowInstance]);
+
+    const onCopy = useCallback(() => {
+        const selectedNodes = reactFlowInstance.getNodes().filter((node) => node.selected);
+        if (selectedNodes.length > 0) {
+            setClipboard(selectedNodes);
+            audioService.playSound('click');
+        }
+    }, [reactFlowInstance]);
+
+    const onPaste = useCallback(() => {
+        if (!clipboard) return;
+        const newNodes = clipboard.map((node) => ({
+            ...node,
+            id: uuidv4(),
+            position: {
+                x: node.position.x + 20,
+                y: node.position.y + 20,
+            },
+            selected: false,
+        }));
+        setNodes((nds) => nds.concat(newNodes));
+        audioService.playSound('receive');
+    }, [clipboard, setNodes]);
+
+    const onDuplicate = useCallback(() => {
+        const selectedNodes = reactFlowInstance.getNodes().filter((node) => node.selected);
+        if (selectedNodes.length === 0) return;
+        const newNodes = selectedNodes.map((node) => ({
+            ...node,
+            id: uuidv4(),
+            position: { x: node.position.x + 20, y: node.position.y + 20 },
+            selected: false,
+        }));
+        setNodes((nds) => nds.concat(newNodes));
+        audioService.playSound('receive');
+    }, [reactFlowInstance, setNodes]);
+    
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.ctrlKey || event.metaKey) {
+                if (event.key === 'c') onCopy();
+                if (event.key === 'v') onPaste();
+                if (event.key === 'd') {
+                    event.preventDefault();
+                    onDuplicate();
+                }
+            }
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [onCopy, onPaste, onDuplicate]);
+
+    return (
+        <div className="flex flex-col h-full" style={{ backgroundColor: settings.developerPanelColor }}>
+            <div className="p-4 border-b border-gray-700/50 flex-shrink-0 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <DeveloperIcon className="w-6 h-6 text-fuchsia-400" />
+                    <h2 className="font-semibold text-lg text-gray-300">Audio Feedback Orchestrator</h2>
                 </div>
-            )}
+                <Toolbar onSave={onSaveSnapshot} onCopy={onCopy} onPaste={onPaste} onDuplicate={onDuplicate} />
+            </div>
+            <div className="flex-grow relative bg-gray-900/30">
+                <ReactFlow
+                    nodes={nodes.map(n => ({...n, data: {...n.data, onChange: onNodeDataChange}}))}
+                    edges={edges}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onConnect={onConnect}
+                    onPaneContextMenu={onPaneContextMenu}
+                    nodeTypes={nodeTypes}
+                    fitView
+                    className="bg-transparent"
+                >
+                    <Background gap={24} color="#4a5568" />
+                    <Controls />
+                    <MiniMap nodeColor={() => settings.miniMapColor} pannable zoomable />
+                </ReactFlow>
+                {menu && (
+                    <ContextMenu
+                        x={menu.x}
+                        y={menu.y}
+                        onClose={() => setMenu(null)}
+                        onAddNode={(type) => {
+                            const position = reactFlowInstance.screenToFlowPosition({ x: menu.x, y: menu.y });
+                            addNode(type, position);
+                            setMenu(null);
+                        }}
+                    />
+                )}
+            </div>
+            <TabFooter />
         </div>
-      </div>
-      <div className="flex-grow relative bg-gray-900/30">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          nodeTypes={nodeTypes}
-          fitView
-          className="bg-transparent"
-        >
-          <Background gap={24} color="#4a5568" />
-          <Controls />
-          <MiniMap nodeColor={(n) => '#334155'} pannable zoomable />
-        </ReactFlow>
-      </div>
-      <TabFooter />
-    </div>
-  );
+    );
 };
+
+const Developers: React.FC = () => (
+    <ReactFlowProvider>
+        <DeveloperCanvas />
+    </ReactFlowProvider>
+);
 
 export default Developers;

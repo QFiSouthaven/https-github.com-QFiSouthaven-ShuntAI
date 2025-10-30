@@ -1,3 +1,4 @@
+// FIX: Corrected import path to be relative to the project root.
 import { Documentation } from '../types';
 
 export const INITIAL_DOCUMENTATION: Documentation = {

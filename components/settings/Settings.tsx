@@ -49,6 +49,28 @@ const Settings: React.FC = () => {
                                     />
                                 </div>
                                 <div>
+                                    <label htmlFor="developerPanelColor" className="block text-sm font-medium text-gray-400">Developer Panel Color</label>
+                                    <input
+                                        type="color"
+                                        id="developerPanelColor"
+                                        name="developerPanelColor"
+                                        value={settings.developerPanelColor}
+                                        onChange={handleSettingChange}
+                                        className="mt-1 w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md cursor-pointer"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="miniMapColor" className="block text-sm font-medium text-gray-400">Minimap Node Color</label>
+                                    <input
+                                        type="color"
+                                        id="miniMapColor"
+                                        name="miniMapColor"
+                                        value={settings.miniMapColor}
+                                        onChange={handleSettingChange}
+                                        className="mt-1 w-full h-10 p-1 bg-gray-700 border border-gray-600 rounded-md cursor-pointer"
+                                    />
+                                </div>
+                                <div>
                                     <label htmlFor="backgroundImage" className="block text-sm font-medium text-gray-400">Background Image URL</label>
                                     <input
                                         type="text"
@@ -73,7 +95,7 @@ const Settings: React.FC = () => {
                                         name="animationsEnabled"
                                         checked={settings.animationsEnabled}
                                         onChange={handleSettingChange}
-                                        className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                                        className="h-4 w-4 rounded border-gray-300 text-fuchsia-600 focus:ring-fuchsia-500"
                                     />
                                 </label>
                                 <label className="flex items-center justify-between cursor-pointer">
@@ -83,7 +105,7 @@ const Settings: React.FC = () => {
                                         name="audioFeedbackEnabled"
                                         checked={settings.audioFeedbackEnabled}
                                         onChange={handleSettingChange}
-                                        className="h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+                                        className="h-4 w-4 rounded border-gray-300 text-fuchsia-600 focus:ring-fuchsia-500"
                                     />
                                 </label>
                              </div>

@@ -24,7 +24,7 @@ const FileDetailView: React.FC<{ file: MailboxFile; onBack: () => void }> = ({ f
                 <div className="flex items-center justify-between">
                     <div className='flex items-center gap-2'>
                         <button onClick={onBack} className="text-gray-400 hover:text-white">&larr; Back</button>
-                        <h3 className="font-mono text-cyan-300" title={file.path}>{file.path}</h3>
+                        <h3 className="font-mono text-fuchsia-300" title={file.path}>{file.path}</h3>
                     </div>
                     <button onClick={handleCopy} className={`flex items-center gap-2 text-sm px-3 py-1.5 rounded-md transition-all duration-200 ${copied ? 'bg-green-500/20 text-green-300' : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700/80'}`}>
                         {copied ? <CheckIcon className="w-4 h-4" /> : <CopyIcon className="w-4 h-4" />}
@@ -83,7 +83,7 @@ const MailboxModal: React.FC<MailboxModalProps> = ({ isOpen, onClose }) => {
                     <>
                         <header className="flex items-center justify-between p-4 border-b border-gray-700 flex-shrink-0">
                             <div className="flex items-center gap-3">
-                                <MailboxIcon className="w-6 h-6 text-cyan-400" />
+                                <MailboxIcon className="w-6 h-6 text-fuchsia-400" />
                                 <h2 className="text-lg font-semibold text-gray-200">Mailbox</h2>
                             </div>
                              <div className="flex items-center gap-4">
@@ -106,14 +106,14 @@ const MailboxModal: React.FC<MailboxModalProps> = ({ isOpen, onClose }) => {
                                 <ul className="space-y-3">
                                     {files.map(file => (
                                         <li key={file.id}>
-                                            <button onClick={() => handleFileSelect(file)} className="w-full text-left p-4 rounded-md bg-gray-900/50 border border-gray-700/50 hover:border-cyan-500/50 transition-colors flex items-start justify-between gap-4">
+                                            <button onClick={() => handleFileSelect(file)} className="w-full text-left p-4 rounded-md bg-gray-900/50 border border-gray-700/50 hover:border-fuchsia-500/50 transition-colors flex items-start justify-between gap-4">
                                                 <div className="flex-grow overflow-hidden">
-                                                    <p className="font-mono text-cyan-300 truncate" title={file.path}>{file.path}</p>
+                                                    <p className="font-mono text-fuchsia-300 truncate" title={file.path}>{file.path}</p>
                                                     <p className="text-xs text-gray-500 mt-1">{new Date(file.timestamp).toLocaleString()}</p>
                                                 </div>
                                                 {!file.isRead && (
                                                      <div className="flex-shrink-0 mt-1">
-                                                        <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-cyan-500/20 text-cyan-300">New</span>
+                                                        <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-fuchsia-500/20 text-fuchsia-300">New</span>
                                                     </div>
                                                 )}
                                             </button>

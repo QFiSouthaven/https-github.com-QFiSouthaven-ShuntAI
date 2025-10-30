@@ -109,7 +109,7 @@ export interface GlobalTelemetryContext {
  * Defines the type of content being versioned.
  * This helps categorize and display versions appropriately.
  */
-export type VersionContentType = 'development_plan' | 'code_snippet' | 'project_context' | 'documentation' | 'chat_export' | 'shunt_interaction' | 'weaver_memory_update';
+export type VersionContentType = 'development_plan' | 'code_snippet' | 'project_context' | 'documentation' | 'chat_export' | 'shunt_interaction' | 'weaver_memory_update' | 'developer_canvas_snapshot';
 
 /**
  * Represents a specific version record in the history.

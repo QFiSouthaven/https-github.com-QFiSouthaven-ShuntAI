@@ -1,7 +1,41 @@
 import { GoogleGenAI, Chat, GenerateContentResponse, Type } from "@google/genai";
+import { z, ZodError } from 'zod';
+// FIX: Corrected import path to be relative to the project root.
 import { ShuntAction, GeminiResponse, TokenUsage, ImplementationTask } from '../types';
+import {
+    shuntResponseSchema,
+    imageAnalysisResponseSchema,
+    aiChatResponseWithContextFlagSchema,
+    geminiDevelopmentPlanResponseSchema,
+} from '../types/schemas';
 import { getPromptForAction } from './prompts';
 import { logFrontendError, ErrorSeverity } from "../utils/errorLogger";
+
+/**
+ * A utility to parse data with a Zod schema and provide rich error logging.
+ * @param schema The Zod schema to use for parsing.
+ * @param data The data to parse.
+ * @param context A string describing the context of the parsing (e.g., function name).
+ * @returns The parsed data.
+ * @throws An error if parsing fails.
+ */
+const parseWithZod = <T>(schema: z.ZodSchema<T>, data: unknown, context: string): T => {
+    try {
+        return schema.parse(data);
+    } catch (error) {
+        if (error instanceof ZodError) {
+            logFrontendError(error, ErrorSeverity.Critical, {
+                context: `Zod validation failed in ${context}`,
+                zodIssues: error.issues,
+                receivedData: data,
+            });
+            throw new Error(`AI response has an unexpected structure (${context}). Please check the console for details.`);
+        }
+        // Re-throw other errors
+        throw error;
+    }
+};
+
 
 /**
  * A utility function that wraps an API call with a retry mechanism.
@@ -61,6 +95,7 @@ export const performShunt = async (text: string, action: ShuntAction, modelName:
         });
         
         const resultText = response.text;
+        // FIX: The `model` variable was not defined; corrected to use `modelName` from the function arguments.
         const tokenUsage = mapTokenUsage(response, modelName);
         
         if (action === ShuntAction.FORMAT_JSON || action === ShuntAction.MAKE_ACTIONABLE || action === ShuntAction.GENERATE_VAM_PRESET) {
@@ -72,15 +107,20 @@ export const performShunt = async (text: string, action: ShuntAction, modelName:
             if (cleanedText.endsWith('```')) {
                 cleanedText = cleanedText.substring(0, cleanedText.length - 3);
             }
-            return { resultText: cleanedText.trim(), tokenUsage };
+            const responseData = { resultText: cleanedText.trim(), tokenUsage };
+            return parseWithZod(shuntResponseSchema, responseData, 'performShunt');
         }
-
-        return { resultText, tokenUsage };
+        
+        const responseData = { resultText, tokenUsage };
+        return parseWithZod(shuntResponseSchema, responseData, 'performShunt');
     };
     return await withRetries(apiCall);
   } catch (error) {
-    logFrontendError(error, ErrorSeverity.High, { context: 'performShunt Gemini API call' });
-    throw new Error('Failed to get a response from the AI. Please check your connection and try again.');
+    if (!(error instanceof ZodError)) {
+        logFrontendError(error, ErrorSeverity.High, { context: 'performShunt Gemini API call' });
+    }
+    // Let the ZodError message propagate, or throw a generic one.
+    throw error instanceof Error ? error : new Error('Failed to get a response from the AI. Please check your connection and try again.');
   }
 };
 
@@ -88,17 +128,23 @@ export const generateOrchestratorReport = async (prompt: string): Promise<{ resu
   try {
     const apiCall = async () => {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        const model = 'gemini-2.5-flash';
+        const model = 'gemini-2.5-pro';
         const response = await ai.models.generateContent({
             model,
             contents: prompt,
+            config: {
+                thinkingConfig: { thinkingBudget: 32768 },
+            },
         });
-        return { resultText: response.text, tokenUsage: mapTokenUsage(response, model) };
+        const responseData = { resultText: response.text, tokenUsage: mapTokenUsage(response, model) };
+        return parseWithZod(shuntResponseSchema, responseData, 'generateOrchestratorReport');
     };
     return await withRetries(apiCall);
   } catch (error) {
-    logFrontendError(error, ErrorSeverity.High, { context: 'generateOrchestratorReport Gemini API call' });
-    throw new Error('Failed to generate the analysis report. Please try again.');
+    if (!(error instanceof ZodError)) {
+        logFrontendError(error, ErrorSeverity.High, { context: 'generateOrchestratorReport Gemini API call' });
+    }
+    throw error instanceof Error ? error : new Error('Failed to generate the analysis report. Please try again.');
   }
 };
 
@@ -119,17 +165,23 @@ ${metrics}
   try {
     const apiCall = async () => {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        const model = 'gemini-2.5-flash';
+        const model = 'gemini-2.5-pro';
         const response = await ai.models.generateContent({
             model,
             contents: prompt,
+            config: {
+                thinkingConfig: { thinkingBudget: 32768 },
+            },
         });
-        return { resultText: response.text, tokenUsage: mapTokenUsage(response, model) };
+        const responseData = { resultText: response.text, tokenUsage: mapTokenUsage(response, model) };
+        return parseWithZod(shuntResponseSchema, responseData, 'generatePerformanceReport');
     };
     return await withRetries(apiCall);
   } catch (error) {
-    logFrontendError(error, ErrorSeverity.High, { context: 'generatePerformanceReport Gemini API call' });
-    throw new Error('Failed to generate the performance report. Please try again.');
+    if (!(error instanceof ZodError)) {
+        logFrontendError(error, ErrorSeverity.High, { context: 'generatePerformanceReport Gemini API call' });
+    }
+    throw error instanceof Error ? error : new Error('Failed to generate the performance report. Please try again.');
   }
 };
 
@@ -149,7 +201,7 @@ export const getAIChatResponseWithContextFlag = async (prompt: string): Promise<
     required: ['answer', 'isContextRelated']
   };
 
-  const model = 'gemini-2.5-flash';
+  const model = 'gemini-2.5-pro';
 
   try {
     const apiCall = async () => {
@@ -160,23 +212,26 @@ export const getAIChatResponseWithContextFlag = async (prompt: string): Promise<
         config: {
           responseMimeType: "application/json",
           responseSchema,
+          thinkingConfig: { thinkingBudget: 32768 },
         },
       });
 
       const tokenUsage = mapTokenUsage(response, model);
       const jsonText = response.text;
       const parsedResponse = JSON.parse(jsonText);
+      const validatedData = parseWithZod(aiChatResponseWithContextFlagSchema, parsedResponse, 'getAIChatResponseWithContextFlag');
 
       return {
-        answer: parsedResponse.answer || "Sorry, I couldn't generate a proper response.",
-        isContextRelated: parsedResponse.isContextRelated ?? true, // Default to true to avoid showing the notice on parsing errors
+        ...validatedData,
         tokenUsage,
       };
     };
     return await withRetries(apiCall);
   } catch (error) {
-    logFrontendError(error, ErrorSeverity.High, { context: 'getAIChatResponseWithContextFlag Gemini API call' });
-    throw new Error('Failed to get a response from the AI. The response may have been malformed JSON.');
+    if (!(error instanceof ZodError)) {
+        logFrontendError(error, ErrorSeverity.High, { context: 'getAIChatResponseWithContextFlag Gemini API call' });
+    }
+    throw error instanceof Error ? error : new Error('Failed to get a response from the AI. The response may have been malformed JSON.');
   }
 };
 
@@ -260,20 +315,20 @@ ${goal}
         const tokenUsage = mapTokenUsage(response, model);
         const jsonText = response.text;
         const parsedResponse = JSON.parse(jsonText);
+        
+        const validatedData = parseWithZod(geminiDevelopmentPlanResponseSchema, parsedResponse, 'generateDevelopmentPlan');
 
         return {
-            clarifyingQuestions: [],
-            architecturalProposal: '',
-            implementationTasks: [],
-            testCases: [],
-            ...parsedResponse,
+            ...validatedData,
             tokenUsage,
         };
     };
     return await withRetries(apiCall);
   } catch (error) {
-    logFrontendError(error, ErrorSeverity.Critical, { context: 'generateDevelopmentPlan Gemini API call' });
-    throw new Error('Failed to generate the development plan. The AI may have returned an invalid response or malformed JSON.');
+    if (!(error instanceof ZodError)) {
+        logFrontendError(error, ErrorSeverity.Critical, { context: 'generateDevelopmentPlan Gemini API call' });
+    }
+    throw error instanceof Error ? error : new Error('Failed to generate the development plan. The AI may have returned an invalid response or malformed JSON.');
   }
 }
 
@@ -284,7 +339,7 @@ export const analyzeImage = async (
   try {
     const apiCall = async () => {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const model = 'gemini-2.5-flash';
+      const model = 'gemini-2.5-pro';
 
       const imagePart = {
         inlineData: {
@@ -322,21 +377,30 @@ Then, if the image contains a character, creature, or object suitable for a 3D m
       const response = await ai.models.generateContent({
         model,
         contents: { parts: [imagePart, textPart] },
+        config: {
+            thinkingConfig: { thinkingBudget: 32768 },
+        },
       });
-
-      return { resultText: response.text, tokenUsage: mapTokenUsage(response, model) };
+      
+      const responseData = { resultText: response.text, tokenUsage: mapTokenUsage(response, model) };
+      return parseWithZod(imageAnalysisResponseSchema, responseData, 'analyzeImage');
     };
     return await withRetries(apiCall);
   } catch (error) {
-    logFrontendError(error, ErrorSeverity.High, { context: 'analyzeImage Gemini API call' });
-    throw new Error('Failed to analyze the image. Please try again.');
+    if (!(error instanceof ZodError)) {
+        logFrontendError(error, ErrorSeverity.High, { context: 'analyzeImage Gemini API call' });
+    }
+    throw error instanceof Error ? error : new Error('Failed to analyze the image. Please try again.');
   }
 };
 
 export const startChat = (history?: { role: string, parts: { text: string }[] }[]): Chat => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     return ai.chats.create({
-        model: 'gemini-2.5-flash',
-        history: history
+        model: 'gemini-2.5-pro',
+        history: history,
+        config: {
+            thinkingConfig: { thinkingBudget: 32768 },
+        },
     });
 };

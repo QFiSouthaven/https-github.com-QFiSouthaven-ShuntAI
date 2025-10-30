@@ -53,7 +53,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSendMessage, isLoading }) => {
       <button
         type="submit"
         disabled={isLoading || !message.trim()}
-        className="flex-shrink-0 w-10 h-10 bg-cyan-600 text-white rounded-md flex items-center justify-center transition-colors hover:bg-cyan-500 disabled:bg-gray-600 disabled:cursor-not-allowed self-end"
+        className="flex-shrink-0 w-10 h-10 bg-fuchsia-600 text-white rounded-md flex items-center justify-center transition-colors hover:bg-fuchsia-500 disabled:bg-gray-600 disabled:cursor-not-allowed self-end"
         aria-label="Send message"
       >
         <PaperAirplaneIcon className="w-5 h-5" />

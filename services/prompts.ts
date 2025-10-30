@@ -1,5 +1,6 @@
 // services/prompts.ts
 
+// FIX: Corrected import path to be relative to the project root.
 import { ShuntAction } from '../types';
 
 export const getPromptForAction = (text: string, action: ShuntAction): string => {

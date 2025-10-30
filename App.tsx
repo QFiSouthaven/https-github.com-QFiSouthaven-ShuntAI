@@ -7,7 +7,7 @@ import { MailboxProvider } from './context/MailboxContext';
 import { MiaProvider } from './context/MiaContext'; // Import MiaProvider
 import MissionControl from './components/mission_control/MissionControl';
 import { GlobalTelemetryContext } from './types/telemetry';
-import MiaAssistant from './features/mia/MiaAssistant';
+import MiaAssistant from './components/mia/MiaAssistant';
 import { useMiaContextTracker } from './hooks/useMiaContextTracker';
 import ErrorBoundary from './components/ErrorBoundary';
 import { audioService } from './services/audioService';
@@ -27,7 +27,7 @@ const App: React.FC = () => {
   const initialGlobalContext: GlobalTelemetryContext = {
     userID: initialUserID,
     sessionID: initialSessionID,
-    appVersion: '1.3.0-delight', // Updated version
+    appVersion: '2.0.0-professional', // Updated version
     browserInfo: navigator.userAgent,
   };
 
@@ -76,7 +76,7 @@ const AppContent: React.FC = () => {
     }, [settings]);
 
     return (
-        <div className="app-container">
+        <div className="app-container w-full">
             <ErrorBoundary>
               <MissionControl />
             </ErrorBoundary>

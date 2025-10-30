@@ -1,21 +1,24 @@
 // context/MiaContext.tsx
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { MiaMessage, MiaAlert } from '../features/mia/miaTypes';
-import { GeminiResponse } from '../types';
+import { MiaMessage, MiaAlert, GeminiResponse } from '../types';
 import { appEventBus } from '../lib/eventBus';
-import { getMiaChatResponse, getMiaErrorAnalysis, generateCodeFixPlan } from '../features/mia/MiaService';
+import { getMiaChatResponse, getMiaErrorAnalysis, generateCodeFixPlan } from '../services/miaService';
 import { logFrontendError, ErrorSeverity } from '../utils/errorLogger';
 import { useMCPContext } from './MCPContext';
 import { INITIAL_DOCUMENTATION } from './constants';
 import { audioService } from '../services/audioService';
+import { MCPConnectionStatus } from '../types/mcp';
 
 interface MiaContextType {
   messages: MiaMessage[];
   alerts: MiaAlert[];
   isLoading: boolean;
   isApplyingFix: boolean;
+  isGeneratingPlan: boolean;
+  agentLog: string[];
   activePlan: GeminiResponse | null;
+  activeTab: string | null;
   sendMessage: (messageText: string) => void;
   diagnoseLastError: () => void;
   generateFixAttempt: (error: MiaAlert) => void;
@@ -27,15 +30,40 @@ interface MiaContextType {
 
 const MiaContext = createContext<MiaContextType | undefined>(undefined);
 
+const MIA_MESSAGES_STORAGE_KEY = 'mia-chat-history';
+
+const loadMessages = (): MiaMessage[] => {
+    try {
+        const storedMessages = localStorage.getItem(MIA_MESSAGES_STORAGE_KEY);
+        if (storedMessages) {
+            return JSON.parse(storedMessages);
+        }
+    } catch (error) {
+        console.error("Failed to load Mia's messages from localStorage", error);
+    }
+    // Return default message if nothing is stored or loading fails
+    return [{ id: uuidv4(), sender: 'mia', text: "Hello! I'm Mia, your application assistant. How can I help you?", timestamp: new Date().toISOString() }];
+};
+
+
 export const MiaProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [messages, setMessages] = useState<MiaMessage[]>([
-        { id: uuidv4(), sender: 'mia', text: "Hello! I'm Mia, your application assistant. How can I help you?", timestamp: new Date().toISOString() }
-    ]);
+    const [messages, setMessages] = useState<MiaMessage[]>(loadMessages);
     const [alerts, setAlerts] = useState<MiaAlert[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isApplyingFix, setIsApplyingFix] = useState<boolean>(false);
+    const [isGeneratingPlan, setIsGeneratingPlan] = useState<boolean>(false);
+    const [agentLog, setAgentLog] = useState<string[]>([]);
     const [activePlan, setActivePlan] = useState<GeminiResponse | null>(null);
-    const { extensionApi } = useMCPContext();
+    const [activeTab, setActiveTab] = useState<string | null>(null);
+    const { extensionApi, status } = useMCPContext();
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(MIA_MESSAGES_STORAGE_KEY, JSON.stringify(messages));
+        } catch (error) {
+            console.error("Failed to save Mia's messages to localStorage", error);
+        }
+    }, [messages]);
 
     const addMessage = useCallback((message: MiaMessage) => {
         setMessages(prev => [...prev, message]);
@@ -51,8 +79,9 @@ export const MiaProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     useEffect(() => {
         const unsubscribeAlerts = appEventBus.on('mia-alert', addAlert);
         const unsubscribeTelemetry = appEventBus.on('telemetry', (payload) => {
-            // Here you could forward Mia's internal telemetry to a backend if needed
-            console.log("Mia Telemetry Captured:", payload);
+            if (payload.type === 'tab_change' && payload.data.tab) {
+                setActiveTab(payload.data.tab);
+            }
         });
 
         return () => {
@@ -127,17 +156,29 @@ export const MiaProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const generateFixAttempt = useCallback(async (error: MiaAlert) => {
         if (!error.context) return;
-        addMessage({ id: uuidv4(), sender: 'mia', text: "Ok, I'll attempt to generate a code fix for that error. Analyzing...", timestamp: new Date().toISOString() });
-        setIsLoading(true);
+        
+        setIsGeneratingPlan(true);
         setActivePlan(null);
+        setAgentLog([]); // Clear previous logs
 
         try {
             const plan = await generateCodeFixPlan(error.context, INITIAL_DOCUMENTATION.geminiContext);
+            
+            // Simulate streaming the monologue for a "real-time" augmented effect
+            if (plan.internalMonologue) {
+                const lines = plan.internalMonologue.split('\n').filter(line => line.trim() !== '');
+                for (const line of lines) {
+                    setAgentLog(prev => [...prev, line]);
+                    await new Promise(res => setTimeout(res, 150)); // Delay for streaming effect
+                }
+            }
+             await new Promise(res => setTimeout(res, 500)); // Final delay before showing proposal
+
             setActivePlan(plan);
             addMessage({
                 id: uuidv4(),
                 sender: 'mia',
-                text: "I've formulated a potential fix. Please review the proposed file changes below. If you approve, I can apply them directly to your project files.",
+                text: "I've formulated a potential fix based on my analysis. Please review the proposed file changes below. If you approve, I can apply them.",
                 timestamp: new Date().toISOString(),
                 fixProposal: plan,
             });
@@ -147,13 +188,13 @@ export const MiaProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             addMessage({ id: uuidv4(), sender: 'system-error', text: "Sorry, I was unable to generate a code fix. The AI returned an error.", timestamp: new Date().toISOString() });
             audioService.playSound('error');
         } finally {
-            setIsLoading(false);
+            setIsGeneratingPlan(false);
         }
     }, [addMessage]);
     
     const applyFix = useCallback(async () => {
         if (!activePlan) return;
-        if (!extensionApi?.fs) {
+        if (status !== MCPConnectionStatus.Connected || !extensionApi?.fs) {
             addMessage({ id: uuidv4(), sender: 'system-error', text: "I can't apply the fix because the Browser Extension with File System Access is not connected. Please connect it in the Settings tab.", timestamp: new Date().toISOString() });
             audioService.playSound('error');
             return;
@@ -169,8 +210,18 @@ export const MiaProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
                     await extensionApi.fs.saveFile(task.filePath, task.newContent);
                     await new Promise(res => setTimeout(res, 500)); // small delay for UI
                 } catch (e) {
-                    logFrontendError(e, ErrorSeverity.Critical, { context: 'Mia.applyFix', file: task.filePath });
+                    const errorContext = { context: 'Mia.applyFix', file: task.filePath };
+                    logFrontendError(e, ErrorSeverity.Critical, errorContext);
+                    
                     addMessage({ id: uuidv4(), sender: 'system-error', text: `Failed to write file: ${task.filePath}. Aborting fix.`, timestamp: new Date().toISOString() });
+                    
+                    addMessage({ 
+                        id: uuidv4(), 
+                        sender: 'mia', 
+                        text: "My attempt to apply the fix failed while writing a file. I have created a new critical alert with the failure details. You can use the 'Diagnose Last Error' button to investigate this new problem.", 
+                        timestamp: new Date().toISOString() 
+                    });
+
                     setIsApplyingFix(false);
                     audioService.playSound('error');
                     return;
@@ -181,10 +232,10 @@ export const MiaProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setIsApplyingFix(false);
         setActivePlan(null);
         audioService.playSound('success');
-    }, [activePlan, extensionApi, addMessage]);
+    }, [activePlan, extensionApi, status, addMessage]);
 
 
-    const value = { messages, alerts, isLoading, isApplyingFix, activePlan, sendMessage, diagnoseLastError, generateFixAttempt, applyFix, addMessage, addAlert, clearAlerts };
+    const value = { messages, alerts, isLoading, isApplyingFix, isGeneratingPlan, agentLog, activePlan, activeTab, sendMessage, diagnoseLastError, generateFixAttempt, applyFix, addMessage, addAlert, clearAlerts };
 
     return (
         <MiaContext.Provider value={value}>

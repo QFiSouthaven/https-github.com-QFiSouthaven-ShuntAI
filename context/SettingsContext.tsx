@@ -7,6 +7,8 @@ interface AppSettings {
     backgroundImage: string;
     animationsEnabled: boolean;
     audioFeedbackEnabled: boolean;
+    developerPanelColor: string;
+    miniMapColor: string;
 }
 
 const defaultSettings: AppSettings = {
@@ -15,6 +17,8 @@ const defaultSettings: AppSettings = {
     backgroundImage: '',
     animationsEnabled: true,
     audioFeedbackEnabled: true,
+    developerPanelColor: '#1f2937', // gray-800
+    miniMapColor: '#334155', // gray-700
 };
 
 const SETTINGS_STORAGE_KEY = 'ai-shunt-settings';

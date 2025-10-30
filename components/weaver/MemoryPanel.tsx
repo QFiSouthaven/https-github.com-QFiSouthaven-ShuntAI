@@ -31,12 +31,13 @@ const MemoryPanel: React.FC<MemoryPanelProps> = ({ documentation, onDocumentatio
     const hasChangedFromInitial = debouncedContent !== INITIAL_DOCUMENTATION[activeTab];
 
     if (debouncedContent && versionControlService && hasChangedFromInitial) {
+        // FIX: Explicitly cast activeTab to string to avoid implicit symbol conversion issues.
         versionControlService.captureVersion(
             'weaver_memory_update',
-            `weaver_memory_${activeTab}`,
+            `weaver_memory_${String(activeTab)}`,
             debouncedContent,
             'user_action',
-            `Updated project memory: ${activeTab}`,
+            `Updated project memory: ${String(activeTab)}`,
             { field: activeTab, length: debouncedContent.length }
         );
     }

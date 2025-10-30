@@ -73,7 +73,7 @@ const Chronicle: React.FC = () => {
         <div className="flex flex-col h-full">
             <div className="p-4 border-b border-gray-700/50 flex-shrink-0">
                 <div className="flex items-center gap-2">
-                    <HistoryIcon className="w-6 h-6 text-cyan-400" />
+                    <HistoryIcon className="w-6 h-6 text-fuchsia-400" />
                     <h2 className="font-semibold text-lg text-gray-300">Application Chronicle</h2>
                 </div>
             </div>
@@ -84,7 +84,7 @@ const Chronicle: React.FC = () => {
                         <p className="text-sm font-semibold text-gray-400 mb-2">Filter by Type</p>
                         <div className="flex flex-wrap gap-2">
                             {availableFilters.map(f => (
-                                <button key={f} onClick={() => setFilter(f)} className={`px-2 py-1 text-xs rounded-md ${filter === f ? 'bg-cyan-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>
+                                <button key={f} onClick={() => setFilter(f)} className={`px-2 py-1 text-xs rounded-md ${filter === f ? 'bg-fuchsia-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`}>
                                     {f.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                                 </button>
                             ))}
@@ -93,8 +93,8 @@ const Chronicle: React.FC = () => {
                     <ul className="p-2 space-y-2 flex-grow">
                         {filteredVersions.map(version => (
                             <li key={version.versionId}>
-                                <button onClick={() => setSelectedVersion(version)} className={`w-full text-left p-3 rounded-md transition-colors ${selectedVersion?.versionId === version.versionId ? 'bg-cyan-900/50' : 'bg-gray-800/50 hover:bg-gray-700/50'}`}>
-                                    <p className="font-semibold text-sm text-cyan-300 truncate">{version.summary}</p>
+                                <button onClick={() => setSelectedVersion(version)} className={`w-full text-left p-3 rounded-md transition-colors ${selectedVersion?.versionId === version.versionId ? 'bg-fuchsia-900/50' : 'bg-gray-800/50 hover:bg-gray-700/50'}`}>
+                                    <p className="font-semibold text-sm text-fuchsia-300 truncate">{version.summary}</p>
                                     <p className="text-xs text-gray-400 mt-1">{version.contentType.replace(/_/g, ' ')}</p>
                                     <p className="text-xs text-gray-500 mt-1">{new Date(version.timestamp).toLocaleString()}</p>
                                 </button>
@@ -132,7 +132,7 @@ const Chronicle: React.FC = () => {
                                                     <span key={idx} className={
                                                         line.startsWith('+') ? 'text-green-400 bg-green-900/20 block' :
                                                         line.startsWith('-') ? 'text-red-400 bg-red-900/20 block' :
-                                                        line.startsWith('@@') ? 'text-cyan-400 block' :
+                                                        line.startsWith('@@') ? 'text-fuchsia-400 block' :
                                                         'text-gray-400 block'
                                                     }>
                                                         {line}

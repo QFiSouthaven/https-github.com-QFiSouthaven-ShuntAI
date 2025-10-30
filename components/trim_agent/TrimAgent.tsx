@@ -127,10 +127,10 @@ const TrimAgent: React.FC = () => {
                 <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg shadow-lg p-6">
                     <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                         <div>
-                            <h2 className="text-xl font-semibold text-white flex items-center gap-3"><TrimIcon className="w-6 h-6 text-cyan-400" />Autonomous Optimization</h2>
+                            <h2 className="text-xl font-semibold text-white flex items-center gap-3"><TrimIcon className="w-6 h-6 text-fuchsia-400" />Autonomous Optimization</h2>
                             <p className="text-gray-400 mt-2">Leverage AI to analyze metrics, identify bottlenecks, and apply performance improvements automatically.</p>
                         </div>
-                        <button onClick={handleOptimize} disabled={isOptimizing} className="w-full md:w-auto flex-shrink-0 px-6 py-3 bg-cyan-600 text-white font-semibold rounded-md hover:bg-cyan-500 disabled:bg-gray-700 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
+                        <button onClick={handleOptimize} disabled={isOptimizing} className="w-full md:w-auto flex-shrink-0 px-6 py-3 bg-fuchsia-600 text-white font-semibold rounded-md hover:bg-fuchsia-500 disabled:bg-gray-700 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
                             {isOptimizing ? <Loader /> : <SparklesIcon className="w-5 h-5" />}
                             {isOptimizing ? 'Optimizing...' : 'Run 1-Click Optimization'}
                         </button>

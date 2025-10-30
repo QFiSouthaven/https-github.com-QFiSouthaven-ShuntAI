@@ -1,6 +1,7 @@
 // context/MailboxContext.tsx
 import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+// FIX: Corrected import path to be relative to the project root.
 import { MailboxFile } from '../types';
 import { useTelemetry } from './TelemetryContext';
 

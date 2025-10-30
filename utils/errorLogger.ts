@@ -1,6 +1,6 @@
 // utils/errorLogger.ts
 import { v4 as uuidv4 } from 'uuid';
-import { MiaAlert } from '../features/mia/miaTypes';
+import { MiaAlert } from '../types';
 import { appEventBus } from '../lib/eventBus';
 
 export enum ErrorSeverity {
