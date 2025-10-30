@@ -11,10 +11,11 @@ interface AudioSourceData {
 
 const mockAudioAssets = [
     { value: '', label: 'Select an asset...' },
-    { value: 'sounds/ui_click.wav', label: 'ui_click.wav' },
-    { value: 'sounds/ui_hover.mp3', label: 'ui_hover.mp3' },
-    { value: 'music/background_loop.ogg', label: 'background_loop.ogg' },
-    { value: 'effects/explosion.wav', label: 'explosion.wav' },
+    // Sourced from Pixabay, free license
+    { value: 'https://cdn.pixabay.com/audio/2022/03/15/audio_731c5f4a64.mp3', label: 'ui_click.wav' },
+    { value: 'https://cdn.pixabay.com/audio/2022/11/17/audio_835548f2a1.mp3', label: 'whoosh.mp3' },
+    { value: 'https://cdn.pixabay.com/audio/2023/04/23/audio_7819e9999c.mp3', label: 'short_calm_loop.ogg' },
+    { value: 'https://cdn.pixabay.com/audio/2022/01/18/audio_854c6f5051.mp3', label: 'drum_loop.wav' },
 ];
 
 const AudioSourceNode = ({ id, data, selected }: NodeProps<AudioSourceData>) => {
@@ -45,7 +46,7 @@ const AudioSourceNode = ({ id, data, selected }: NodeProps<AudioSourceData>) => 
             </select>
             {data.selectedAsset && (
                 <p className="text-xs text-cyan-300 font-mono mt-3 text-center truncate" title={data.selectedAsset}>
-                    {data.selectedAsset}
+                    {data.selectedAsset.split('/').pop()}
                 </p>
             )}
           </main>

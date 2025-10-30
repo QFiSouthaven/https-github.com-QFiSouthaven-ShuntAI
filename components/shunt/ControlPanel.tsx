@@ -22,6 +22,7 @@ import {
     EntityIcon,
     DocumentChartBarIcon
 } from '../icons';
+import { shuntActionDescriptions } from '../../services/prompts';
 
 interface ControlPanelProps {
   onShunt: (action: ShuntAction) => void;
@@ -81,6 +82,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onShunt, onCombinedShunt, i
             disabled={isLoading}
             className="bg-gray-700/50 border border-gray-600 text-xs text-gray-200 rounded-md pl-2 pr-7 py-1 focus:outline-none focus:ring-1 focus:ring-fuchsia-500 transition-colors duration-200 hover:border-gray-500"
             aria-label="Select AI model"
+            title="Select the Gemini model to use for the shunt action."
         >
             <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
             <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
@@ -93,7 +95,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onShunt, onCombinedShunt, i
             return (
                 <div key={group} className="mb-4">
                     <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{group}</h3>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {actionsInGroup.map(({ action, icon }) => (
                         <ShuntButton
                             key={action}
@@ -103,6 +105,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onShunt, onCombinedShunt, i
                             isActive={isLoading && (activeShunt?.includes(action) ?? false)}
                             onDragStart={handleDragStart}
                             onDrop={handleDrop}
+                            tooltip={shuntActionDescriptions[action]}
                         >
                             {icon}
                             {action}

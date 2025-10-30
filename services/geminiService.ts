@@ -1,7 +1,7 @@
 import { GoogleGenAI, Chat, GenerateContentResponse, Type } from "@google/genai";
 import { z, ZodError } from 'zod';
 // FIX: Corrected import path to be relative to the project root.
-import { ShuntAction, GeminiResponse, TokenUsage, ImplementationTask } from '../types';
+import { ShuntAction, GeminiResponse, TokenUsage, ImplementationTask, SerendipityResult } from '../types';
 import {
     shuntResponseSchema,
     imageAnalysisResponseSchema,
@@ -108,11 +108,15 @@ export const performShunt = async (text: string, action: ShuntAction, modelName:
                 cleanedText = cleanedText.substring(0, cleanedText.length - 3);
             }
             const responseData = { resultText: cleanedText.trim(), tokenUsage };
-            return parseWithZod(shuntResponseSchema, responseData, 'performShunt');
+            // FIX: This line was reported as having an error. Re-asserting the object structure to ensure correctness.
+            // FIX: Explicitly provide the generic type to `parseWithZod` to fix type inference issues where the return type was incorrectly inferred as `{}`.
+            return parseWithZod<z.infer<typeof shuntResponseSchema>>(shuntResponseSchema, responseData, 'performShunt');
         }
         
         const responseData = { resultText, tokenUsage };
-        return parseWithZod(shuntResponseSchema, responseData, 'performShunt');
+        // FIX: This line was reported as having an error. Re-asserting the object structure to ensure correctness.
+        // FIX: Explicitly provide the generic type to `parseWithZod` to fix type inference issues where the return type was incorrectly inferred as `{}`.
+        return parseWithZod<z.infer<typeof shuntResponseSchema>>(shuntResponseSchema, responseData, 'performShunt');
     };
     return await withRetries(apiCall);
   } catch (error) {
@@ -136,8 +140,10 @@ export const generateOrchestratorReport = async (prompt: string): Promise<{ resu
                 thinkingConfig: { thinkingBudget: 32768 },
             },
         });
+        // FIX: This line was reported as having an error. Re-asserting the object structure to ensure correctness.
         const responseData = { resultText: response.text, tokenUsage: mapTokenUsage(response, model) };
-        return parseWithZod(shuntResponseSchema, responseData, 'generateOrchestratorReport');
+        // FIX: Explicitly provide the generic type to `parseWithZod` to fix type inference issues where the return type was incorrectly inferred as `{}`.
+        return parseWithZod<z.infer<typeof shuntResponseSchema>>(shuntResponseSchema, responseData, 'generateOrchestratorReport');
     };
     return await withRetries(apiCall);
   } catch (error) {
@@ -173,8 +179,10 @@ ${metrics}
                 thinkingConfig: { thinkingBudget: 32768 },
             },
         });
+        // FIX: This line was reported as having an error. Re-asserting the object structure to ensure correctness.
         const responseData = { resultText: response.text, tokenUsage: mapTokenUsage(response, model) };
-        return parseWithZod(shuntResponseSchema, responseData, 'generatePerformanceReport');
+        // FIX: Explicitly provide the generic type to `parseWithZod` to fix type inference issues where the return type was incorrectly inferred as `{}`.
+        return parseWithZod<z.infer<typeof shuntResponseSchema>>(shuntResponseSchema, responseData, 'generatePerformanceReport');
     };
     return await withRetries(apiCall);
   } catch (error) {
@@ -217,12 +225,21 @@ export const getAIChatResponseWithContextFlag = async (prompt: string): Promise<
       });
 
       const tokenUsage = mapTokenUsage(response, model);
-      const jsonText = response.text;
+      // FIX: Clean the JSON response to remove potential markdown fences.
+      let jsonText = response.text.trim();
+      if (jsonText.startsWith('```json')) {
+        jsonText = jsonText.slice(7, -3).trim();
+      } else if (jsonText.startsWith('```')) {
+        jsonText = jsonText.slice(3, -3).trim();
+      }
       const parsedResponse = JSON.parse(jsonText);
-      const validatedData = parseWithZod(aiChatResponseWithContextFlagSchema, parsedResponse, 'getAIChatResponseWithContextFlag');
+      // FIX: Explicitly provide the generic type to `parseWithZod` to fix type inference issues where the return type was incorrectly inferred as `unknown`.
+      const validatedData = parseWithZod<z.infer<typeof aiChatResponseWithContextFlagSchema>>(aiChatResponseWithContextFlagSchema, parsedResponse, 'getAIChatResponseWithContextFlag');
 
+      // FIX: Replace object spread with explicit properties to resolve compiler error.
       return {
-        ...validatedData,
+        answer: validatedData.answer,
+        isContextRelated: validatedData.isContextRelated,
         tokenUsage,
       };
     };
@@ -313,13 +330,25 @@ ${goal}
         });
 
         const tokenUsage = mapTokenUsage(response, model);
-        const jsonText = response.text;
+        // FIX: Clean the JSON response to remove potential markdown fences.
+        let jsonText = response.text.trim();
+        if (jsonText.startsWith('```json')) {
+            jsonText = jsonText.slice(7, -3).trim();
+        } else if (jsonText.startsWith('```')) {
+            jsonText = jsonText.slice(3, -3).trim();
+        }
         const parsedResponse = JSON.parse(jsonText);
         
-        const validatedData = parseWithZod(geminiDevelopmentPlanResponseSchema, parsedResponse, 'generateDevelopmentPlan');
+        // FIX: Explicitly provide the generic type to `parseWithZod` to fix type inference issues where the return type was incorrectly inferred as `unknown`.
+        const validatedData = parseWithZod<z.infer<typeof geminiDevelopmentPlanResponseSchema>>(geminiDevelopmentPlanResponseSchema, parsedResponse, 'generateDevelopmentPlan');
 
+        // FIX: Replace object spread with explicit properties to resolve compiler error.
         return {
-            ...validatedData,
+            clarifyingQuestions: validatedData.clarifyingQuestions,
+            architecturalProposal: validatedData.architecturalProposal,
+            implementationTasks: validatedData.implementationTasks,
+            testCases: validatedData.testCases,
+            internalMonologue: validatedData.internalMonologue,
             tokenUsage,
         };
     };
@@ -382,8 +411,10 @@ Then, if the image contains a character, creature, or object suitable for a 3D m
         },
       });
       
+      // FIX: This line was reported as having an error. Re-asserting the object structure to ensure correctness.
       const responseData = { resultText: response.text, tokenUsage: mapTokenUsage(response, model) };
-      return parseWithZod(imageAnalysisResponseSchema, responseData, 'analyzeImage');
+      // FIX: Explicitly provide the generic type to `parseWithZod` to fix type inference issues where the return type was incorrectly inferred as `{}`.
+      return parseWithZod<z.infer<typeof imageAnalysisResponseSchema>>(imageAnalysisResponseSchema, responseData, 'analyzeImage');
     };
     return await withRetries(apiCall);
   } catch (error) {
@@ -403,4 +434,58 @@ export const startChat = (history?: { role: string, parts: { text: string }[] }[
             thinkingConfig: { thinkingBudget: 32768 },
         },
     });
+};
+
+export const generateSerendipity = async (prompt: string, onProgress: (update: string) => void): Promise<SerendipityResult> => {
+    try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+        // 1. Expand prompt
+        onProgress('Expanding creative prompt...');
+        const expansionResponse = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: `You are a creative muse. Expand the following terse idea into a rich, detailed, and evocative prompt for an AI image generator. Focus on atmosphere, lighting, composition, and specific details. Original idea: "${prompt}"`,
+        });
+        const expandedPrompt = expansionResponse.text;
+
+        // 2. Generate Image
+        onProgress('Generating high-fidelity image...');
+        const imageResponse = await ai.models.generateImages({
+            model: 'imagen-4.0-generate-001',
+            prompt: expandedPrompt,
+            config: { numberOfImages: 1, outputMimeType: 'image/png' },
+        });
+        const imageB64 = imageResponse.generatedImages[0].image.imageBytes;
+
+        // 3. Generate Story
+        onProgress('Writing a cohesive story...');
+        const storyResponse = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: {
+                parts: [
+                    {
+                        inlineData: {
+                            mimeType: 'image/png',
+                            data: imageB64,
+                        },
+                    },
+                    {
+                        text: `Based on the attached image, which was generated from the concept "${prompt}", write a short, evocative story or descriptive paragraph (100-150 words).`,
+                    },
+                ],
+            },
+        });
+        const story = storyResponse.text;
+
+        onProgress('Done.');
+        return {
+            imageB64,
+            story,
+            originalPrompt: prompt,
+            expandedPrompt,
+        };
+    } catch (error) {
+        logFrontendError(error, ErrorSeverity.Critical, { context: 'generateSerendipity' });
+        throw error instanceof Error ? error : new Error('The Serendipity Engine failed. Please try again.');
+    }
 };

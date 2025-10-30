@@ -184,3 +184,23 @@ ${text}
       throw new Error('Unknown shunt action');
   }
 };
+
+export const shuntActionDescriptions: Record<ShuntAction, string> = {
+  [ShuntAction.SUMMARIZE]: 'Condenses the input text into a concise summary of its main points.',
+  [ShuntAction.AMPLIFY]: 'Expands on the input text, adding more detail and examples for comprehensiveness.',
+  [ShuntAction.MAKE_ACTIONABLE]: 'Analyzes the input and generates a step-by-step implementation plan or actionable tasks.',
+  [ShuntAction.BUILD_A_SKILL]: 'Generates a complete, structured skill package based on a high-level request.',
+  [ShuntAction.EXPLAIN_LIKE_IM_FIVE]: 'Simplifies the input text, explaining it in simple terms suitable for a young child.',
+  [ShuntAction.EXPLAIN_LIKE_A_SENIOR]: 'Rewrites the input text using sophisticated, expert-level language and technical terms.',
+  [ShuntAction.EXTRACT_KEYWORDS]: 'Identifies and lists the most important keywords from the input text.',
+  [ShuntAction.EXTRACT_ENTITIES]: 'Finds and lists all named entities (people, places, organizations, etc.) from the text.',
+  [ShuntAction.ENHANCE_WITH_KEYWORDS]: 'Rewrites the input text to be more descriptive and engaging by integrating relevant keywords.',
+  [ShuntAction.CHANGE_TONE_FORMAL]: 'Converts the input text to a formal and professional tone.',
+  [ShuntAction.CHANGE_TONE_CASUAL]: 'Rewrites the input text to have a friendly, informal, and conversational tone.',
+  [ShuntAction.PROOFREAD]: 'Corrects spelling, grammar, and typos in the input text.',
+  [ShuntAction.TRANSLATE_SPANISH]: 'Translates the input text into Spanish.',
+  [ShuntAction.FORMAT_JSON]: 'Converts the key information from the input text into a structured JSON object.',
+  [ShuntAction.PARSE_JSON]: 'Transforms a JSON object into a human-readable, plain English summary.',
+  [ShuntAction.INTERPRET_SVG]: 'Analyzes SVG code and describes the visual image it represents.',
+  [ShuntAction.GENERATE_VAM_PRESET]: 'Creates a Virt-a-Mate (VAM) JSON preset file based on a character description.',
+};

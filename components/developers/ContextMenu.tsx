@@ -12,6 +12,7 @@ interface ContextMenuProps {
 const nodeTypesToAdd = [
     { type: 'audioSource', label: 'Audio Source' },
     { type: 'uiEvent', label: 'UI Event Trigger' },
+    { type: 'rhythmClick', label: 'Rhythm Click' },
     { type: 'audioOutput', label: 'Audio Output' },
 ];
 
@@ -32,7 +33,6 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, onClose, onAddNode }) =
 
     const handleAddNode = (type: string) => {
         onAddNode(type);
-        audioService.playSound('click');
     };
 
     return (

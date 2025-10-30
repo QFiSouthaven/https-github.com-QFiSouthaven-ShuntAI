@@ -11,6 +11,7 @@ interface ShuntButtonProps {
   action: ShuntAction;
   onDragStart: (e: React.DragEvent<HTMLButtonElement>, action: ShuntAction) => void;
   onDrop: (e: React.DragEvent<HTMLButtonElement>, action: ShuntAction) => void;
+  tooltip: string;
 }
 
 const ShuntButton: React.FC<ShuntButtonProps> = ({ 
@@ -20,7 +21,8 @@ const ShuntButton: React.FC<ShuntButtonProps> = ({
   children, 
   action,
   onDragStart,
-  onDrop
+  onDrop,
+  tooltip,
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -59,13 +61,14 @@ const ShuntButton: React.FC<ShuntButtonProps> = ({
       onDrop={handleDrop}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
+      title={tooltip}
       className={`
         flex items-center justify-center gap-2 text-sm text-center p-3 rounded-md
         border transition-all duration-200
         ${
           isActive
             ? 'bg-gray-700/80 border-fuchsia-500 text-fuchsia-200 cursor-wait ring-2 ring-fuchsia-500 ring-offset-2 ring-offset-gray-800'
-            : 'bg-gray-700/30 border-gray-600/50 text-gray-300 hover:bg-gray-700/60 hover:border-gray-500 disabled:opacity-50'
+            : 'bg-gray-700/30 border-gray-600/50 text-gray-300 shadow-lg hover:bg-gray-700/60 hover:border-gray-500 hover:shadow-fuchsia-500/20 hover:-translate-y-px disabled:opacity-50'
         }
         ${
           isDragOver ? 'ring-2 ring-fuchsia-400 ring-offset-2 ring-offset-gray-800' : ''

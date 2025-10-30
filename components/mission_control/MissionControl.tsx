@@ -73,7 +73,7 @@ const MissionControl: React.FC = () => {
         <div className="flex h-screen w-full p-4 bg-gray-900 text-gray-200">
             <SidebarNav tabs={tabs} activeTab={activeTabKey} onTabClick={handleTabClick} />
             <main className="flex-grow flex flex-col bg-gray-800/50 border border-gray-700/50 rounded-r-lg">
-                <header className="flex items-center justify-between p-4 border-b border-gray-700/50 flex-shrink-0">
+                <header className="flex items-center justify-between p-4 border-b border-gray-700/50 flex-shrink-0 bg-gradient-to-t from-gray-900 to-gray-700">
                     <h2 className="text-lg font-semibold">{activeTab?.label}</h2>
                     <HeaderActions 
                         onUndo={undo}

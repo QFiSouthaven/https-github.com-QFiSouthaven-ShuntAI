@@ -24,6 +24,7 @@ import { audioService } from '../../services/audioService';
 import AudioSourceNode from './nodes/AudioSourceNode';
 import UIEventNode from './nodes/UIEventNode';
 import AudioOutputNode from './nodes/AudioOutputNode';
+import RhythmClickNode from './nodes/RhythmClickNode';
 import { DeveloperIcon } from '../icons';
 import { useSettings } from '../../context/SettingsContext';
 import { useTelemetry } from '../../context/TelemetryContext';
@@ -93,6 +94,7 @@ const DeveloperCanvas: React.FC = () => {
         audioSource: AudioSourceNode,
         uiEvent: UIEventNode,
         audioOutput: AudioOutputNode,
+        rhythmClick: RhythmClickNode,
     }), []);
   
     const onNodeDataChange = useCallback((nodeId: string, newData: any) => {

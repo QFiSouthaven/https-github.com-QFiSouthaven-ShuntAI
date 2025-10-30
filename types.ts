@@ -1,5 +1,6 @@
 // types.ts
-import { ReactNode } from 'react';
+// FIX: Import React to provide the React namespace for types like React.FC.
+import React, { ReactNode } from 'react';
 import { z } from 'zod';
 import { Tool } from '@anthropic-ai/sdk/resources/messages';
 import { 
@@ -39,7 +40,7 @@ export type GeminiResponse = z.infer<typeof geminiDevelopmentPlanResponseSchema>
 };
 
 
-export type MissionControlTabKey = 'shunt' | 'weaver' | 'chat' | 'orchestrator' | 'trim_agent' | 'image_analysis' | 'terminal' | 'chronicle' | 'documentation' | 'settings' | 'anthropic_chat' | 'developers' | 'subscription';
+export type MissionControlTabKey = 'shunt' | 'weaver' | 'chat' | 'orchestrator' | 'trim_agent' | 'image_analysis' | 'terminal' | 'chronicle' | 'documentation' | 'settings' | 'anthropic_chat' | 'developers' | 'subscription' | 'serendipity_engine';
 
 export interface MissionControlTab {
     key: MissionControlTabKey;
@@ -156,3 +157,10 @@ export const STATIC_TOOLS: Tool[] = [
     cache_control: { type: "ephemeral" },
   },
 ];
+
+export interface SerendipityResult {
+  imageB64: string;
+  story: string;
+  originalPrompt: string;
+  expandedPrompt: string;
+}

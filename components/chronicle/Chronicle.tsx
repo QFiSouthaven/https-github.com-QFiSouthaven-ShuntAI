@@ -1,9 +1,11 @@
 // components/chronicle/Chronicle.tsx
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useTelemetry } from '../../context/TelemetryContext';
 import { VersionRecord, VersionContentType } from '../../types/telemetry';
-import { HistoryIcon, CopyIcon, CheckIcon } from '../icons';
+import { HistoryIcon, CopyIcon, CheckIcon, DocumentDuplicateIcon } from '../icons';
 import TabFooter from '../common/TabFooter';
+
+const DiffViewer = React.lazy(() => import('../developers/DiffViewer'));
 
 type FilterType = 'All' | VersionContentType;
 
@@ -13,6 +15,9 @@ const Chronicle: React.FC = () => {
     const [selectedVersion, setSelectedVersion] = useState<VersionRecord | null>(null);
     const [filter, setFilter] = useState<FilterType>('All');
     const [copied, setCopied] = useState(false);
+    const [isDiffModalOpen, setIsDiffModalOpen] = useState(false);
+    const [diffData, setDiffData] = useState<{ oldContent: string; newContent: string } | null>(null);
+
 
     useEffect(() => {
         updateTelemetryContext({ tab: 'Chronicle' });
@@ -42,6 +47,27 @@ const Chronicle: React.FC = () => {
         }
     };
     
+    const handleViewDiff = useCallback((version: VersionRecord) => {
+        if (!versionControlService) return;
+
+        const versionIndex = versions.findIndex(v => v.versionId === version.versionId);
+        const previousVersion = versions[versionIndex + 1];
+
+        if (previousVersion && previousVersion.contentRef === version.contentRef) {
+            const newContent = versionControlService.getVersionContent(version.versionId);
+            const oldContent = versionControlService.getVersionContent(previousVersion.versionId);
+
+            if (newContent && oldContent) {
+                setDiffData({ oldContent, newContent });
+                setIsDiffModalOpen(true);
+            } else {
+                alert("Could not retrieve content for one of the versions.");
+            }
+        } else {
+            alert("No previous version found to compare against.");
+        }
+    }, [versionControlService, versions]);
+
     const availableFilters = useMemo(() => {
         const contentTypes = new Set(versions.map(v => v.contentType));
         return ['All', ...Array.from(contentTypes)] as FilterType[];
@@ -58,7 +84,7 @@ const Chronicle: React.FC = () => {
         if (!content) return <p className="text-gray-500 italic">Content not available for this version.</p>;
         
         // Pretty print if it's a shunt interaction (JSON)
-        if (version.contentType === 'shunt_interaction' || version.contentType === 'chat_export') {
+        if (version.contentType === 'shunt_interaction' || version.contentType === 'chat_export' || version.contentType === 'developer_canvas_snapshot') {
             try {
                 const parsed = JSON.parse(content);
                 return <pre className="text-sm text-gray-300 whitespace-pre-wrap break-all font-mono">{JSON.stringify(parsed, null, 2)}</pre>;
@@ -122,6 +148,17 @@ const Chronicle: React.FC = () => {
                                     <div className="bg-gray-900/50 rounded-md p-3 max-h-96 overflow-y-auto">
                                         {renderContent(selectedVersion)}
                                     </div>
+                                    {selectedVersion.contentType === 'developer_canvas_snapshot' && (
+                                        <div className="mt-4">
+                                            <button
+                                                onClick={() => handleViewDiff(selectedVersion)}
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-gray-700/50 border border-gray-600 rounded-md text-gray-300 hover:bg-gray-700 transition-colors"
+                                            >
+                                                <DocumentDuplicateIcon className="w-5 h-5 text-fuchsia-400" />
+                                                View Visual Diff
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                                 {selectedVersion.diff && (
                                      <div>
@@ -153,6 +190,20 @@ const Chronicle: React.FC = () => {
                 </div>
             </div>
             <TabFooter />
+             <Suspense fallback={
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                    <p className="text-white">Loading Diff Viewer...</p>
+                </div>
+            }>
+                {isDiffModalOpen && diffData && (
+                    <DiffViewer
+                        isOpen={isDiffModalOpen}
+                        onClose={() => setIsDiffModalOpen(false)}
+                        oldContent={diffData.oldContent}
+                        newContent={diffData.newContent}
+                    />
+                )}
+            </Suspense>
         </div>
     );
 };

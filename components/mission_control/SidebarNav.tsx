@@ -23,6 +23,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ tabs, activeTab, onTabClick }) 
                     <li key={tab.key}>
                         <button
                             onClick={() => onTabClick(tab.key)}
+                            title={tab.label}
                             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
                                 activeTab === tab.key
                                 ? 'bg-fuchsia-500/10 text-fuchsia-300'

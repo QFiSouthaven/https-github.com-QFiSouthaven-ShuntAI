@@ -587,6 +587,19 @@ button:active, select:active {
     background: rgba(0,0,0,0.5) !important;
 }
 
+/* Diff Viewer Styles */
+.react-flow__node.diff-added > div {
+    border: 2px solid #4ade80 !important;
+}
+.react-flow__node.diff-modified > div {
+    border: 2px solid #facc15 !important;
+}
+.react-flow__node.diff-removed > div {
+    border: 2px dashed #f87171 !important;
+    opacity: 0.6;
+}
+
+
 /* Anthropic Chat Styles */
 .anthropic-chat-container {
   display: flex;
