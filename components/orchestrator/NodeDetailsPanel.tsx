@@ -1,7 +1,8 @@
 // components/orchestrator/NodeDetailsPanel.tsx
 import React, { useEffect, useState } from 'react';
 import { OrchestratedItem } from '../mission_control/Orchestrator';
-import { XMarkIcon, ServerIcon, GlobeAltIcon, BranchingIcon, ActionableIcon } from '../icons';
+// FIX: Replace GlobeAltIcon with GlobeIcon and BranchingIcon with BrainIcon as they do not exist in the icons file.
+import { XMarkIcon, ServerIcon, GlobeIcon, BrainIcon, ActionableIcon } from '../icons';
 
 interface NodeDetailsPanelProps {
   node: OrchestratedItem;
@@ -10,8 +11,8 @@ interface NodeDetailsPanelProps {
 
 const typeIconMap: Record<OrchestratedItem['type'], React.ReactNode> = {
     Service: <ServerIcon className="w-5 h-5 text-gray-300" />,
-    Deployment: <GlobeAltIcon className="w-5 h-5 text-gray-300" />,
-    Workflow: <BranchingIcon className="w-5 h-5 text-gray-300" />,
+    Deployment: <GlobeIcon className="w-5 h-5 text-gray-300" />,
+    Workflow: <BrainIcon className="w-5 h-5 text-gray-300" />,
     Task: <ActionableIcon className="w-5 h-5 text-gray-300" />,
 };
 

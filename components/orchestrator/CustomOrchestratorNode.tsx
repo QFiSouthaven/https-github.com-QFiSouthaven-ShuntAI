@@ -3,13 +3,14 @@
 import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { OrchestratedItem } from '../mission_control/Orchestrator';
-import { ServerIcon, GlobeAltIcon, BranchingIcon, ActionableIcon } from '../icons';
+// FIX: Replace GlobeAltIcon with GlobeIcon and BranchingIcon with BrainIcon as they do not exist in the icons file.
+import { ServerIcon, GlobeIcon, BrainIcon, ActionableIcon } from '../icons';
 import StatusIndicator from '../common/StatusIndicator';
 
 const typeIconMap: Record<OrchestratedItem['type'], React.ReactNode> = {
   Service: <ServerIcon className="w-5 h-5 text-gray-300" />,
-  Deployment: <GlobeAltIcon className="w-5 h-5 text-gray-300" />,
-  Workflow: <BranchingIcon className="w-5 h-5 text-gray-300" />,
+  Deployment: <GlobeIcon className="w-5 h-5 text-gray-300" />,
+  Workflow: <BrainIcon className="w-5 h-5 text-gray-300" />,
   Task: <ActionableIcon className="w-5 h-5 text-gray-300" />,
 };
 

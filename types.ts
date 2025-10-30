@@ -2,7 +2,6 @@
 // FIX: Import React to provide the React namespace for types like React.FC.
 import React, { ReactNode } from 'react';
 import { z } from 'zod';
-import { Tool } from '@anthropic-ai/sdk/resources/messages';
 import { 
     tokenUsageSchema, 
     implementationTaskSchema, 
@@ -10,6 +9,23 @@ import {
     chatRequestSchema, 
     anthropicChatResponseSchema
 } from './types/schemas';
+
+// FIX: Define the Tool type locally to resolve the import error.
+export interface Tool {
+  name: string;
+  description: string;
+  input_schema: {
+    type: 'object';
+    properties: {
+      [key: string]: {
+        type: string;
+        description: string;
+      };
+    };
+    required: string[];
+  };
+  cache_control?: { type: 'ephemeral' };
+}
 
 
 export enum ShuntAction {
