@@ -46,6 +46,16 @@ export enum ShuntAction {
   PARSE_JSON = 'Parse JSON to Text',
   INTERPRET_SVG = 'Interpret SVG',
   GENERATE_VAM_PRESET = 'Generate VAM Preset',
+  MY_COMMAND = 'Analyze & Clarify',
+  GENERATE_ORACLE_QUERY = 'Generate Oracle Query',
+}
+
+export enum PromptModuleKey {
+  CORE = 'CORE',
+  COMPLEX_PROBLEM = 'COMPLEX_PROBLEM',
+  AGENTIC = 'AGENTIC',
+  CONSTRAINT = 'CONSTRAINT',
+  META = 'META',
 }
 
 // Replaced interfaces with types inferred from Zod schemas for a single source of truth.

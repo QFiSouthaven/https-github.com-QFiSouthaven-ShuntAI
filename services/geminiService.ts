@@ -1,14 +1,15 @@
 import { GoogleGenAI, Chat, GenerateContentResponse, Type } from "@google/genai";
 import { z, ZodError } from 'zod';
 // FIX: Corrected import path to be relative to the project root.
-import { ShuntAction, GeminiResponse, TokenUsage, ImplementationTask, SerendipityResult } from '../types';
+import { ShuntAction, GeminiResponse, TokenUsage, ImplementationTask, SerendipityResult, PromptModuleKey } from '../types';
 import {
     shuntResponseSchema,
     imageAnalysisResponseSchema,
     aiChatResponseWithContextFlagSchema,
     geminiDevelopmentPlanResponseSchema,
+    actionablePlanResponseSchema,
 } from '../types/schemas';
-import { getPromptForAction } from './prompts';
+import { getPromptForAction, promptModules } from './prompts';
 import { logFrontendError, ErrorSeverity } from "../utils/errorLogger";
 
 /**
@@ -83,9 +84,71 @@ export const performShunt = async (text: string, action: ShuntAction, modelName:
   try {
     const apiCall = async () => {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+        if (action === ShuntAction.MAKE_ACTIONABLE) {
+            const model = 'gemini-2.5-pro'; // Use Pro model for this complex task
+            const prompt = `You are an expert senior frontend engineer. Analyze the following user request and deconstruct it into a series of actionable development tasks.
+            
+Your output must be a JSON object that strictly adheres to the provided schema. For each task, provide the file path, a brief description, and detailed implementation steps.
+
+**User Request:**
+---
+${text}
+---
+`;
+            const taskSchema = {
+                type: Type.OBJECT,
+                properties: {
+                    filePath: { type: Type.STRING, description: "The full path to the file to be modified, or 'NEW_FILE' if a new file should be created." },
+                    description: { type: Type.STRING, description: "A one-sentence summary of the task." },
+                    details: { type: Type.STRING, description: "Precise, step-by-step details for the changes. If it's a new file, this should contain the full intended content." },
+                },
+                required: ['filePath', 'description', 'details']
+            };
+
+            const responseSchema = {
+                type: Type.OBJECT,
+                properties: {
+                    tasks: {
+                        type: Type.ARRAY,
+                        description: "A list of actionable development tasks.",
+                        items: taskSchema
+                    }
+                },
+                required: ['tasks']
+            };
+
+            const response = await ai.models.generateContent({
+                model,
+                contents: prompt,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema,
+                    thinkingConfig: { thinkingBudget: 32768 },
+                },
+            });
+
+            const tokenUsage = mapTokenUsage(response, model);
+            const parsedJson = JSON.parse(response.text);
+            const validatedData = parseWithZod(actionablePlanResponseSchema, parsedJson, 'performShunt:MAKE_ACTIONABLE');
+
+            let resultText = `# Implementation Plan\n\nBased on your request, here are the suggested development tasks:\n\n`;
+            if (validatedData.tasks.length === 0) {
+                resultText += "No specific development tasks were generated. The request might have been too abstract or didn't require code changes.";
+            } else {
+                validatedData.tasks.forEach((task, index) => {
+                    resultText += `---\n\n### Task ${index + 1}: ${task.description}\n\n`;
+                    resultText += `**File:** \`${task.filePath}\`\n\n`;
+                    resultText += `**Details:**\n`;
+                    resultText += `\`\`\`\n${task.details || 'No details provided.'}\n\`\`\`\n\n`;
+                });
+            }
+            return { resultText, tokenUsage };
+        }
+
         const prompt = getPromptForAction(text, action);
         
-        const isComplexAction = action === ShuntAction.MAKE_ACTIONABLE || action === ShuntAction.BUILD_A_SKILL;
+        const isComplexAction = action === ShuntAction.BUILD_A_SKILL;
         const config = (isComplexAction && modelName.includes('pro')) ? { thinkingConfig: { thinkingBudget: 32768 } } : {};
 
         const response = await ai.models.generateContent({
@@ -98,7 +161,7 @@ export const performShunt = async (text: string, action: ShuntAction, modelName:
         // FIX: The `model` variable was not defined; corrected to use `modelName` from the function arguments.
         const tokenUsage = mapTokenUsage(response, modelName);
         
-        if (action === ShuntAction.FORMAT_JSON || action === ShuntAction.MAKE_ACTIONABLE || action === ShuntAction.GENERATE_VAM_PRESET) {
+        if (action === ShuntAction.FORMAT_JSON || action === ShuntAction.GENERATE_VAM_PRESET) {
             let cleanedText = resultText.trim();
             if (cleanedText.startsWith('```')) {
                 const firstNewLineIndex = cleanedText.indexOf('\n');
@@ -126,6 +189,49 @@ export const performShunt = async (text: string, action: ShuntAction, modelName:
     // Let the ZodError message propagate, or throw a generic one.
     throw error instanceof Error ? error : new Error('Failed to get a response from the AI. Please check your connection and try again.');
   }
+};
+
+export const executeModularPrompt = async (text: string, modules: Set<PromptModuleKey>): Promise<{ resultText: string; tokenUsage: TokenUsage }> => {
+    try {
+        const apiCall = async () => {
+            const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+            const modelName = 'gemini-2.5-pro';
+
+            // 1. Start with the Core Directive
+            let combinedPrompt = promptModules[PromptModuleKey.CORE].content;
+
+            // 2. Add selected modules
+            const moduleOrder: PromptModuleKey[] = [PromptModuleKey.COMPLEX_PROBLEM, PromptModuleKey.AGENTIC, PromptModuleKey.CONSTRAINT, PromptModuleKey.META];
+            moduleOrder.forEach(key => {
+                if (modules.has(key)) {
+                    combinedPrompt += `\n\n---\n\n${promptModules[key].content}`;
+                }
+            });
+
+            // 3. Add the user's task
+            combinedPrompt += `\n\n---\n\nMy Task: "${text}"`;
+
+            const response = await ai.models.generateContent({
+                model: modelName,
+                contents: combinedPrompt,
+                config: {
+                    thinkingConfig: { thinkingBudget: 32768 },
+                },
+            });
+
+            const resultText = response.text;
+            const tokenUsage = mapTokenUsage(response, modelName);
+
+            const responseData = { resultText, tokenUsage };
+            return parseWithZod<z.infer<typeof shuntResponseSchema>>(shuntResponseSchema, responseData, 'executeModularPrompt');
+        };
+        return await withRetries(apiCall);
+    } catch (error) {
+        if (!(error instanceof ZodError)) {
+            logFrontendError(error, ErrorSeverity.High, { context: 'executeModularPrompt Gemini API call' });
+        }
+        throw error instanceof Error ? error : new Error('Failed to get a response from the modular prompt engine. Please check your connection and try again.');
+    }
 };
 
 export const generateOrchestratorReport = async (prompt: string): Promise<{ resultText: string; tokenUsage: TokenUsage }> => {

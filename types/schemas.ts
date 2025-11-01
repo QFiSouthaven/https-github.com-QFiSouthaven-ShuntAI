@@ -24,6 +24,10 @@ export const implementationTaskSchema = z.object({
   newContent: z.string().optional(),
 });
 
+export const actionablePlanResponseSchema = z.object({
+    tasks: z.array(implementationTaskSchema),
+});
+
 export const geminiDevelopmentPlanResponseSchema = z.object({
   clarifyingQuestions: z.array(z.string()),
   architecturalProposal: z.string(),

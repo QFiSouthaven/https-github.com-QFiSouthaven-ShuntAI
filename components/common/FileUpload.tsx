@@ -283,13 +283,20 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFilesUploaded, acceptedFileTy
     ? 'border-fuchsia-400 bg-fuchsia-900/30'
     : 'border-gray-600 hover:border-gray-500 hover:bg-gray-700/30';
 
+  // FIX: Filter the `acceptedFileTypes` array to create a valid string for the `accept` attribute.
+  // The HTML `accept` attribute requires file extensions to start with a period ('.').
+  // Items without a period (like 'dockerfile') were causing the file picker to fail in some browsers.
+  const acceptString = acceptedFileTypes
+    .filter(type => type.startsWith('.') || type.includes('/')) // Only allow extensions and MIME types
+    .join(',');
+
   const inputProps: any = {
       type: "file",
       ref: fileInputRef,
       onChange: onFileSelect,
       multiple: true,
       className: "hidden",
-      accept: acceptedFileTypes.join(','),
+      accept: acceptString, // Use the sanitized string
   };
   if (enableDirectoryUpload) {
       inputProps.webkitdirectory = "";

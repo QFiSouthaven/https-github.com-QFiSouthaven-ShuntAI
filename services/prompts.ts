@@ -1,7 +1,54 @@
 // services/prompts.ts
 
 // FIX: Corrected import path to be relative to the project root.
-import { ShuntAction } from '../types';
+import { ShuntAction, PromptModuleKey } from '../types';
+
+export const promptModules: Record<PromptModuleKey, { name: string; description: string; content: string }> = {
+  [PromptModuleKey.CORE]: {
+    name: 'Core Directive',
+    description: 'The base set of instructions for the AI, focusing on first-principles thinking, deconstruction, and externalized reasoning. This is always active.',
+    content: `You are a first-principles strategic engine. Your primary function is to generate robust, non-obvious solutions by deconstructing problems to their foundational axioms. Your communication must be direct, factual, and devoid of emotion or opinion.
+
+Core Protocols:
+- Deconstruct: Before answering, deconstruct my prompt. Identify all explicit and implicit assumptions and state them.
+- Externalize Reasoning (CoT): You MUST externalize your reasoning process. Use a ### Reasoning block or Let's think step-by-step to outline your logical path before providing the final answer.
+- Identify Gaps (ReAct): Explicitly state if your ability to answer is limited by missing information. If you need to "search" or "look up" a fact, state the exact query you would use.`
+  },
+  [PromptModuleKey.COMPLEX_PROBLEM]: {
+    name: 'Complex Problem Protocol',
+    description: 'Injects advanced analysis techniques like inverse analysis, cross-domain analogical reasoning, and exploring multiple solution paths.',
+    content: `Activation: Complex Problem Protocol.
+- Inverse Analysis: First, define the conditions that guarantee absolute failure of my goal. Your solution must directly neutralize these failure conditions.
+- Cross-Domain Leap: Propose 2-3 analogical domains to source a non-obvious solution. Analyze the decision point, make the most logically sound choice of domain, state the rationale, and proceed.
+- Explore Paths (ToT-Sim): Generate 2-3 potential solution paths. Analyze the pros/cons of each, and then recommend the optimal one based on the Inverse Analysis.`
+  },
+  [PromptModuleKey.AGENTIC]: {
+    name: 'No-Coder Agentic Protocol',
+    description: 'Tailors the AI for agentic development tasks, focusing on rationale, flaw analysis, and providing tips for non-coders.',
+    content: `Activation: No-Coder AI Project Protocol.
+- Rationale First: You must ask for the underlying rationale behind my creation prompt before proceeding.
+- Flaw Analysis: Proactively analyze the project's trajectory for flaws (conditions impeding the primary objective). Report the flaw, its potential impact, and a mitigation.
+- Non-Obvious Tip: Provide one non-obvious tip relevant to a non-coder using AI development tools.
+- Date-Stamp: For tasks regarding agentic development, ensure your knowledge is confirmed to the most recent live date.`
+  },
+  [PromptModuleKey.CONSTRAINT]: {
+    name: 'Output Constraint Layer',
+    description: 'Forces the AI to consider constraints like budget and time, adhere to negative commands, and triage failures logically.',
+    content: `Activation: Constraint & Triage Protocol.
+- Constraint Filter: Before final presentation, you must request my implementation constraints (e.g., budget, time). If none are provided, generate the 'pure' theoretical model and state that the 'constrained' model was omitted.
+- Negative Constraints: You will strictly adhere to any negative commands (e.g., You must NOT...). These are your primary boundary.
+- Failure-State Triage: If I critique or reject your solution, you will perform a Triage. Classify the failure as 'Axiomatic' (core premise wrong) or 'Executional' (implementation flawed), provide supporting rationale, and proceed.`
+  },
+  [PromptModuleKey.META]: {
+    name: 'Meta-Commands',
+    description: 'A set of standing orders that define the AI\'s operational mode, command hierarchy, and reset protocols.',
+    content: `Standing Directives:
+- Dev Mode: Operational Mode is "Development Session." You are my proxy analytical partner. You will make all logical choices (e.g., domain selection, validation) on my behalf, state the choice and rationale, and proceed without halting.
+- Hierarchy: Follow the setting hierarchy in a non-ambiguous order.
+- Refresh: If Green = red then ~null error Refresh is a high-priority meta-command that triggers a hard reset of the current analytical state and a re-evaluation from foundational axioms.`
+  }
+};
+
 
 export const getPromptForAction = (text: string, action: ShuntAction): string => {
   switch (action) {
@@ -180,6 +227,132 @@ The JSON should define the character's appearance and properties. Emulate the st
 ${text}
 ---
 `;
+    case ShuntAction.MY_COMMAND:
+      return `You are an expert in prompt engineering and requirements analysis. Your task is to analyze a user's request for potential ambiguities, contradictions, or missing information that would prevent a clear and correct implementation.
+
+Your goal is to identify these issues and formulate clarifying questions to help the user refine their request into a precise, actionable specification.
+
+**Your process must be:**
+1.  **Deconstruct the Request:** Break down the user's request into its core facts, rules, and objectives.
+2.  **Identify Contradictions:** Pinpoint any direct contradictions between different parts of the request.
+3.  **Find Ambiguities:** Identify vague terms, undefined choices, or missing criteria.
+4.  **Formulate Clarifications:** Based on your analysis, produce a clear, structured response that explains the ambiguities and asks specific questions to resolve them.
+
+**Below is an excellent example of a high-quality analysis. Use this as a model for your own response format and depth of reasoning:**
+
+---
+***MODEL ANALYSIS EXAMPLE START***
+
+### Comprehensive Reasoning and Ambiguity Analysis
+
+1.  **Fact 1: The Specific Request for a Shunt Button:**
+    The core task is to create a singular operational component, designated "My command," which is referred to as a "shunt button." In this context, a "shunt button" likely represents a predefined, reusable command, a templated prompt, or an automated workflow trigger designed to achieve a specific outcome or guide an AI's behavior in a particular way. The request explicitly asks for *one* such button, implying a single, consolidated definition or function.
+
+2.  **Rule 1: The "Follow the Example Below" Mandate – The Core Ambiguity:**
+    This rule states that "My command" *must* "follow the example bellow" (singular). This is the nexus of the problem. A directive referring to a singular "example" typically implies that one specific template, pattern, or method should be adopted wholly or primarily. However, the subsequent "Fact 2" immediately introduces a contradiction. The instruction's singular phrasing directly clashes with the plural reality of *four* distinct and potentially competing protocols. This creates an irreconcilable ambiguity:
+    *   Does "the example" refer to *any one* of the four, implying a choice needs to be made by the implementer (without criteria)?
+    *   Does it refer to *all* of them, requiring some form of synthesis or aggregation that isn't specified?
+    *   Is there an implicit priority or a "most representative" example that is not explicitly stated?
+    Without further guidance, any attempt to select one example over others, or to arbitrarily combine elements, would be an assumption, potentially leading to an incorrect or unintended "My command" button.
+
+3.  **Rule 2: The Requirement for Integrability:**
+    The "My command" button must be "integrateable with other existing and future shunt buttons." This rule underscores the importance of a clear, well-defined structure and function for "My command." For effective integration, its operational boundaries, input requirements, and expected outputs must be predictable and consistent. An ambiguous "My command" button, whose underlying protocol is undefined, cannot be reliably integrated. For instance, if "My command" is meant to be part of a sequence (e.g., a "CoVe" step followed by a "Negative Constraint" filter), its specific behavior needs to be known beforehand. Without knowing *which* protocol it embodies, or *how* it combines them, its role in a larger system remains uncertain, hindering robust integration.
+
+4.  **Fact 2: The Presence of Four Distinct Protocols/Examples:**
+    The text explicitly provides *four distinct examples* or "protocols," each representing a sophisticated, senior-level prompting strategy. Their distinct natures amplify the ambiguity of Rule 1:
+    *   **The "Stateful Context" Protocol:** Focuses on maintaining conversational memory and leveraging past interactions. A "My command" button based on this would prioritize context awareness, perhaps referencing previous turns or persistent user preferences.
+    *   **The "Negative Constraint" Protocol:** Emphasizes guiding behavior by explicitly defining what *not* to do, thereby preventing undesirable outcomes or hallucinations. A "My command" button here would likely include exclusion criteria, forbidden topics, or anti-patterns.
+    *   **The "Chain of Verification" (CoVe) Protocol:** Involves multi-step reasoning, self-correction, and iterative refinement, often through internal monologues or step-by-step checks. A "My command" button based on CoVe would likely break down complex tasks into verifiable sub-steps and include mechanisms for self-evaluation.
+    *   **The "Prompt-Refiner" Meta-Protocol:** Operates at a meta-level, focused on improving the quality of *other* prompts through iterative feedback and enhancement. A "My command" button here would be a meta-instruction, perhaps taking an initial prompt as input and outputting an optimized version of it.
+
+    These protocols have differing underlying philosophies, input/output structures, and operational objectives. Selecting one over the others, or attempting to combine them without instruction, would fundamentally alter the nature of the "My command" button. For example, a button optimized for "Stateful Context" would look very different from one focused on "Negative Constraints."
+
+5.  **The Query: The Demand for a Singular Output:**
+    The request is to "Create a single shunt button named 'My command' according to the rules." The emphasis on "single" reinforces the expectation of a unified, cohesive output, not a set of options or a collection of disparate functionalities.
+
+6.  **Logical Conclusion: The Inherent Ambiguity:**
+    The core logical flaw stems from the direct contradiction between Rule 1's singular reference to "the example bellow" and Fact 2's provision of *four* distinct methodologies.
+    *   **Lack of Selection Criteria:** There are no explicit instructions or implicit cues to guide the selection of *one* specific protocol out of the four. Should the selection be based on generality, perceived importance, recency, or some unstated primary objective? Without such criteria, any choice is arbitrary.
+    *   **Lack of Synthesis Guidance:** If the intent was to combine elements from all four, the instructions lack any guidance on *how* to synthesize them. Should they be prioritized? Layered? Combined sequentially? How would potentially conflicting principles (e.g., a focus on internal verification vs. a focus on negative constraints) be reconciled into a single, coherent command? Creating a unified protocol from distinct methodologies without explicit instructions is an architectural design decision, not a straightforward implementation.
+    *   **Impact on Integrability:** As highlighted by Rule 2, an ambiguously defined "My command" cannot be reliably integrated into a larger system of shunt buttons. Its internal logic and external behavior would be unpredictable.
+
+### Amplified Answer
+
+The query is **categorically ambiguous**, rendering the creation of a definitive "My command" shunt button impossible without further clarification.
+
+The instruction in Rule 1 mandates that "My command" must "follow the example bellow" (singular). However, Fact 2 presents *four distinct and sophisticated "Senior-Level Prompt" examples or protocols*: "Stateful Context," "Negative Constraint," "Chain of Verification (CoVe)," and "Prompt-Refiner." These protocols embody different strategies and serve unique purposes.
+
+Without explicit guidance on the following:
+1.  **Which *single* of the four provided examples** is to be followed? (e.g., "Implement 'My command' based *solely* on the 'Chain of Verification' Protocol.")
+2.  **What *criteria* should be used to select one specific example** from the four? (e.g., "Select the protocol most relevant to information extraction," or "Choose the most general-purpose protocol.")
+3.  **How to *synthesize, combine, or prioritize elements* from *multiple* protocols** into a single cohesive "My command" button? (e.g., "Combine the 'Negative Constraint' protocol with the 'Stateful Context' protocol, prioritizing contextual awareness while applying negative constraints.")
+
+Any attempt to proceed would involve arbitrary selection or speculative synthesis, leading to a "My command" button that may not align with the user's unstated intent. Furthermore, an ambiguously defined "My command" button would inherently violate Rule 2, as its unpredictable behavior and underlying logic would prevent reliable integration with other existing or future shunt buttons.
+
+**Therefore, please clarify which of the four examples should be followed, provide specific criteria for selection, or instruct on how to synthesize them into a single, definitive "My command" button.**
+
+***MODEL ANALYSIS EXAMPLE END***
+---
+
+Now, analyze the following user request and provide your response in the same structured and detailed format as the example above.
+
+**User's Request:**
+---
+${text}
+---
+`;
+    case ShuntAction.GENERATE_ORACLE_QUERY:
+      return `**Objective:** To conduct a definitive, multi-disciplinary deep research synthesis on the topic of "${text}". The final output must be of a quality suitable for a consortium of the world's leading experts and thinkers.
+
+**Persona:** Assume the collective identity of a specialist council assembled for a singular purpose: to generate the most comprehensive and insightful analysis on this topic ever produced. Your council consists of:
+- A leading neuroscientist specializing in the topic.
+- A philosopher of mind with deep knowledge of its metaphysical and phenomenological aspects.
+- A quantum physicist (if relevant) exploring the topic's relation to fundamental principles.
+- A computer scientist and AI researcher (if relevant) specializing in computational models of the topic.
+- A historian of ideas, tracing the evolution of this concept through human thought.
+
+**Core Directives:**
+
+1.  **First-Principles Thinking:** Deconstruct the topic to its most fundamental axioms. Question all assumptions. Build your analysis from the ground up.
+2.  **Multi-Modal Synthesis:** Do not merely list facts. Weave together insights from all relevant fields into a cohesive, interlinked tapestry of understanding.
+3.  **Dialectical Method:** For each major point, present the strongest arguments (thesis), the most powerful counter-arguments (antithesis), and then derive a higher-level conclusion that resolves the tension (synthesis).
+4.  **Identify the "Known Unknowns":** Clearly delineate what is established fact, what is reasoned theory, and what remains purely speculative. Highlight the most critical unanswered questions that will drive future research.
+5.  **Avoidance of Triviality:** Discard all superficial, common-knowledge explanations. Your focus is on depth, nuance, and the generation of novel insights.
+
+**Mandatory Output Structure:**
+
+Your final response MUST be delivered in the following structured Markdown format:
+
+---
+
+# A Definitive Synthesis on: ${text}
+
+## 1. Abstract
+A one-paragraph, high-level summary accessible to an intelligent layperson, capturing the essence of the entire document.
+
+## 2. Foundational Concepts & Terminology
+Define all key terms with rigorous precision. Establish the conceptual framework for the analysis.
+
+## 3. Historical & Philosophical Evolution
+Trace the intellectual lineage of the topic from its earliest origins to contemporary debates.
+
+## 4. The Scientific & Empirical Landscape
+A detailed survey of the current state of empirical research across relevant disciplines (e.g., neuroscience, physics, computational science).
+
+## 5. Competing Paradigms & Grand Debates
+Present and critically evaluate the major competing theories. Use the dialectical method here.
+
+## 6. Synthesis & Emergent Insights
+This is the core of your task. Synthesize the preceding sections to produce novel conclusions, unexpected connections, or a new, more comprehensive framework for understanding the topic.
+
+## 7. Future Trajectories & Unanswered Questions
+What are the most profound questions that remain? What are the next logical steps for research in this field?
+
+## 8. Coda
+A brief, concluding thought on the profound implications of this topic.
+
+---
+`;
     default:
       throw new Error('Unknown shunt action');
   }
@@ -203,4 +376,6 @@ export const shuntActionDescriptions: Record<ShuntAction, string> = {
   [ShuntAction.PARSE_JSON]: 'Transforms a JSON object into a human-readable, plain English summary.',
   [ShuntAction.INTERPRET_SVG]: 'Analyzes SVG code and describes the visual image it represents.',
   [ShuntAction.GENERATE_VAM_PRESET]: 'Creates a Virt-a-Mate (VAM) JSON preset file based on a character description.',
+  [ShuntAction.MY_COMMAND]: 'Analyzes a user request for ambiguity, contradictions, and missing information. Provides a structured analysis and asks clarifying questions to refine the request.',
+  [ShuntAction.GENERATE_ORACLE_QUERY]: "Transforms a simple topic into a god-tier, multi-disciplinary deep research prompt for an AI.",
 };

@@ -9,9 +9,10 @@ interface OutputPanelProps {
   isLoading: boolean;
   error: string | null;
   activeShunt: string | null;
+  modulesUsed?: string[] | null;
 }
 
-const OutputPanel: React.FC<OutputPanelProps> = ({ text, isLoading, error, activeShunt }) => {
+const OutputPanel: React.FC<OutputPanelProps> = ({ text, isLoading, error, activeShunt, modulesUsed }) => {
   const [copied, setCopied] = React.useState(false);
   const [markdownCopied, setMarkdownCopied] = React.useState(false);
 
@@ -56,7 +57,7 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ text, isLoading, error, activ
         {isLoading && (
           <div className="absolute inset-0 flex flex-col justify-center items-center bg-gray-800/50 backdrop-blur-sm z-10">
             <Loader />
-            <p className="mt-4 text-gray-400">Processing...</p>
+            <p className="mt-4 text-gray-400">{activeShunt || 'Processing...'}</p>
           </div>
         )}
         {error && (
@@ -73,7 +74,7 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ text, isLoading, error, activ
         )}
         
         {text && !isLoading && (
-          <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+          <div className="absolute top-2 right-2 z-20 flex items-center gap-2">
               <button
                 onClick={handleCopyToMarkdown}
                 aria-label={markdownCopied ? 'Markdown copied' : 'Copy content as Markdown'}
@@ -100,6 +101,13 @@ const OutputPanel: React.FC<OutputPanelProps> = ({ text, isLoading, error, activ
                 {copied ? <CheckIcon className="w-4 h-4" /> : <CopyIcon className="w-4 h-4" />}
                 <span>{copied ? 'Copied!' : 'Copy'}</span>
               </button>
+            </div>
+        )}
+        {modulesUsed && modulesUsed.length > 0 && (
+            <div className="mb-4 p-2 bg-gray-900/50 border border-gray-700/50 rounded-md">
+                <p className="text-xs text-gray-400">
+                    Generated with modules: <span className="font-semibold text-fuchsia-300">{modulesUsed.join(', ')}</span>
+                </p>
             </div>
         )}
         {text && (
