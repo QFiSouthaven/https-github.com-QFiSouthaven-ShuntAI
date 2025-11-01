@@ -94,6 +94,15 @@ code {
   animation: panel-fade-in 0.5s ease-out;
 }
 
+/* Keyframe for simple fade in */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+    animation: fade-in 0.4s ease-out forwards;
+}
+
 /* --- Tab Transition Animations --- */
 .tab-container {
   position: relative;

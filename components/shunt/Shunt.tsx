@@ -1,5 +1,6 @@
 // components/shunt/Shunt.tsx
 import React, { useState, useCallback } from 'react';
+import JSZip from 'jszip';
 import InputPanel from './InputPanel';
 import ControlPanel from './ControlPanel';
 import OutputPanel from './OutputPanel';
@@ -12,6 +13,9 @@ import { audioService } from '../../services/audioService';
 import { promptModules } from '../../services/prompts';
 import { useMailbox } from '../../context/MailboxContext';
 import { parseSkillPackagePlan } from '../../services/skillParser';
+import { useMCPContext } from '../../context/MCPContext';
+import { MCPConnectionStatus } from '../../types/mcp';
+import { logFrontendError, ErrorSeverity } from '../../utils/errorLogger';
 
 const DEMO_TEXT = `{
   "id": "001",
@@ -51,10 +55,12 @@ const Shunt: React.FC = () => {
   const [lastTokenUsage, setLastTokenUsage] = useState<TokenUsage | null>(null);
   const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-pro');
   const [modulesForLastRun, setModulesForLastRun] = useState<string[] | null>(null);
+  const [showAmplifyX2, setShowAmplifyX2] = useState(false);
 
 
   const { telemetryService, versionControlService } = useTelemetry();
   const { deliverFiles } = useMailbox();
+  const { extensionApi, status: mcpStatus } = useMCPContext();
 
   const { errors, isTouched, isValid, validate, markAsTouched, reset } = useValidation(
     inputText,
@@ -79,6 +85,7 @@ const Shunt: React.FC = () => {
     setError(null);
     setOutputText('');
     setModulesForLastRun(null);
+    setShowAmplifyX2(false);
     setActiveShunt(action);
     audioService.playSound('send');
     
@@ -89,7 +96,34 @@ const Shunt: React.FC = () => {
         const files = parseSkillPackagePlan(resultText);
         if (files.length > 0) {
             await deliverFiles(files);
-            setOutputText(`✅ Skill package generated successfully!\n\n${files.length} file(s) have been delivered to your Mailbox.\n\nYou can access them via the Mailbox icon in the top-right header.`);
+            const skillName = files[0].path.split('/')[0] || 'skill-package';
+            
+            if (mcpStatus === MCPConnectionStatus.Connected && extensionApi?.fs) {
+                setOutputText(`MCP extension connected. Shunting skill '${skillName}' directly to your computer...`);
+                await Promise.all(
+                    files.map(file => extensionApi.fs!.saveFile(file.path, file.content))
+                );
+                setOutputText(`✅ Skill package '${skillName}' shunted directly to your computer!\n\n${files.length} file(s) are now on your local filesystem and also available in your Mailbox.`);
+
+            } else {
+                const zip = new JSZip();
+                files.forEach(file => {
+                    zip.file(file.path, file.content);
+                });
+                
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(zipBlob);
+                link.download = `${skillName}.zip`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+
+                setOutputText(`✅ Skill package generated successfully!\n\n${files.length} file(s) have been delivered to your Mailbox and downloaded as \`${skillName}.zip\`.\n\n(Tip: Connect the MCP Browser Extension to shunt files directly to your computer).`);
+            }
+            
             audioService.playSound('success'); 
         } else {
             setOutputText(`⚠️ Could not parse any files from the AI's response.\n\nThe raw output is shown below for debugging:\n\n---\n\n${resultText}`);
@@ -97,6 +131,9 @@ const Shunt: React.FC = () => {
         }
       } else {
         setOutputText(resultText);
+        if (action === ShuntAction.AMPLIFY && resultText) {
+            setShowAmplifyX2(true);
+        }
         audioService.playSound('receive');
       }
       
@@ -116,22 +153,34 @@ const Shunt: React.FC = () => {
       versionControlService?.captureVersion('shunt_interaction', 'shunt_output', JSON.stringify({ input: textToProcess, output: resultText, action, model: selectedModel, tokenUsage }, null, 2), 'ai_response', `Shunt action: ${action}`);
 
     } catch (e: any) {
-      const errorMessage = e.message || 'An unknown error occurred.';
-      setError(errorMessage);
+      logFrontendError(e, ErrorSeverity.High, {
+          context: 'Shunt.handleShunt',
+          action,
+          selectedModel,
+      });
+      const userFriendlyMessage = 'An unexpected error occurred. Check the developer console for details.';
+      setError(userFriendlyMessage);
+      setShowAmplifyX2(false);
       audioService.playSound('error');
        telemetryService?.recordEvent({
         eventType: 'ai_response',
         interactionType: 'shunt_action',
         tab: 'Shunt',
         outcome: 'error',
-        customData: { action, error: errorMessage }
+        customData: { action, error: e.message || 'An unknown error occurred.' }
       });
     } finally {
       setIsLoading(false);
       setActiveShunt(null);
     }
-  }, [inputText, isLoading, isValid, markAsTouched, validate, errors, telemetryService, selectedModel, versionControlService, deliverFiles]);
+  }, [inputText, isLoading, isValid, markAsTouched, validate, errors, telemetryService, selectedModel, versionControlService, deliverFiles, mcpStatus, extensionApi]);
   
+    const handleAmplifyX2 = useCallback(async () => {
+        if (!outputText || isLoading) return;
+        setInputText(outputText); // Put output back into input for user to see
+        handleShunt(ShuntAction.AMPLIFY_X2, outputText);
+    }, [outputText, isLoading, handleShunt]);
+
   const handleModularShunt = useCallback(async (modules: Set<PromptModuleKey>) => {
     markAsTouched();
     validate();
@@ -145,6 +194,7 @@ const Shunt: React.FC = () => {
     setError(null);
     setOutputText('');
     setModulesForLastRun(null);
+    setShowAmplifyX2(false);
     const moduleNames = Array.from(modules).map(key => promptModules[key].name);
     setActiveShunt(`Modular Prompt (${moduleNames.length} module${moduleNames.length === 1 ? '' : 's'})`);
     audioService.playSound('send');
@@ -169,15 +219,19 @@ const Shunt: React.FC = () => {
         });
 
     } catch (e: any) {
-        const errorMessage = e.message || 'An unknown error occurred.';
-        setError(errorMessage);
+        logFrontendError(e, ErrorSeverity.High, {
+            context: 'Shunt.handleModularShunt',
+            modules: Array.from(modules),
+        });
+        const userFriendlyMessage = 'An unexpected error occurred. Check the developer console for details.';
+        setError(userFriendlyMessage);
         audioService.playSound('error');
         telemetryService?.recordEvent({
             eventType: 'ai_response',
             interactionType: 'modular_shunt_action',
             tab: 'Shunt',
             outcome: 'error',
-            customData: { modules: Array.from(modules), error: errorMessage }
+            customData: { modules: Array.from(modules), error: e.message || 'An unknown error occurred.' }
         });
     } finally {
         setIsLoading(false);
@@ -196,6 +250,7 @@ const Shunt: React.FC = () => {
     setError(null);
     setOutputText('');
     setModulesForLastRun(null);
+    setShowAmplifyX2(false);
     setActiveShunt(combinedActionName);
     audioService.playSound('send');
     
@@ -220,17 +275,39 @@ const Shunt: React.FC = () => {
         setOutputText(secondResult);
         setLastTokenUsage(finalTokenUsage);
         audioService.playSound('receive');
+        
+        telemetryService?.recordEvent({
+            eventType: 'ai_response',
+            interactionType: 'combined_shunt_action',
+            tab: 'Shunt',
+            outcome: 'success',
+            tokenUsage: finalTokenUsage,
+            customData: { actions: [draggedAction, targetAction] }
+        });
 
     } catch (e: any) {
-        const errorMessage = e.message || 'An unknown error occurred.';
-        setError(errorMessage);
+        logFrontendError(e, ErrorSeverity.High, {
+            context: 'Shunt.handleCombinedShunt',
+            actions: [draggedAction, targetAction],
+            selectedModel,
+        });
+        const userFriendlyMessage = 'An unexpected error occurred. Check the developer console for details.';
+        setError(userFriendlyMessage);
         audioService.playSound('error');
+        
+        telemetryService?.recordEvent({
+            eventType: 'ai_response',
+            interactionType: 'combined_shunt_action',
+            tab: 'Shunt',
+            outcome: 'error',
+            customData: { actions: [draggedAction, targetAction], error: e.message || 'An unknown error occurred.' }
+        });
     } finally {
         setIsLoading(false);
         setActiveShunt(null);
     }
 
-  }, [inputText, isLoading, isValid, markAsTouched, validate, selectedModel]);
+  }, [inputText, isLoading, isValid, markAsTouched, validate, selectedModel, telemetryService]);
   
   const handlePasteDemo = () => {
     setInputText(DEMO_TEXT);
@@ -245,6 +322,7 @@ const Shunt: React.FC = () => {
     setLastTokenUsage(null);
     reset();
     setModulesForLastRun(null);
+    setShowAmplifyX2(false);
   };
 
   return (
@@ -272,6 +350,8 @@ const Shunt: React.FC = () => {
             activeShunt={activeShunt}
             selectedModel={selectedModel}
             onModelChange={setSelectedModel}
+            showAmplifyX2={showAmplifyX2}
+            onAmplifyX2={handleAmplifyX2}
           />
         </div>
         <div className="xl:col-span-1">

@@ -5,6 +5,7 @@ import {
     TelemetryConfig,
     GlobalTelemetryContext,
 } from '../types/telemetry';
+import { appEventBus } from '../lib/eventBus';
 
 // Sensible defaults to ensure the service is operational even with minimal configuration
 const DEFAULT_CONFIG: TelemetryConfig = {
@@ -66,6 +67,9 @@ export class TelemetryService {
 
         this.eventQueue.push(enrichedEvent);
         console.log(`TelemetryService: Event '${enrichedEvent.eventType}' queued. Current queue size: ${this.eventQueue.length}.`);
+        
+        // Emit the event on the bus for live listeners like Oraculum
+        appEventBus.emit('telemetry', { type: 'interaction_event', data: enrichedEvent });
 
         // Trigger an immediate send if the batch size threshold is met
         if (this.eventQueue.length >= this.config.batchSize!) {

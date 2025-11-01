@@ -13,6 +13,7 @@ import {
     TieIcon, 
     SparklesIcon,
     AmplifyIcon,
+    AmplifyX2Icon,
     BrainIcon,
     FeatherIcon,
     JsonToTextIcon,
@@ -36,6 +37,8 @@ interface ControlPanelProps {
   activeShunt: string | null;
   selectedModel: string;
   onModelChange: (model: string) => void;
+  showAmplifyX2: boolean;
+  onAmplifyX2: () => void;
 }
 
 const shuntActionsConfig = [
@@ -63,7 +66,7 @@ const shuntActionsConfig = [
 const actionGroups = ['Content', 'Explanation', 'Keywords', 'Tone', 'Quality', 'Data'];
 
 
-const ControlPanel: React.FC<ControlPanelProps> = ({ onShunt, onModularShunt, onCombinedShunt, isLoading, activeShunt, selectedModel, onModelChange }) => {
+const ControlPanel: React.FC<ControlPanelProps> = ({ onShunt, onModularShunt, onCombinedShunt, isLoading, activeShunt, selectedModel, onModelChange, showAmplifyX2, onAmplifyX2 }) => {
   const [selectedModules, setSelectedModules] = useState<Set<PromptModuleKey>>(new Set());
   
   const handleDragStart = (e: React.DragEvent<HTMLButtonElement>, action: ShuntAction) => {
@@ -150,24 +153,43 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ onShunt, onModularShunt, on
             {actionGroups.map(group => {
                 const actionsInGroup = shuntActionsConfig.filter(c => c.group === group);
                 if (actionsInGroup.length === 0) return null;
+                
                 return (
                     <div key={group} className="mb-4">
                         <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{group}</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {actionsInGroup.map(({ action, icon }) => (
-                            <ShuntButton
-                                key={action}
-                                action={action}
-                                onClick={() => onShunt(action)}
-                                disabled={isLoading}
-                                isActive={isLoading && (activeShunt?.includes(action) ?? false)}
-                                onDragStart={handleDragStart}
-                                onDrop={handleDrop}
-                                tooltip={shuntActionDescriptions[action]}
-                            >
-                                {icon}
-                                {action}
-                            </ShuntButton>
+                                <React.Fragment key={action}>
+                                    <ShuntButton
+                                        action={action}
+                                        onClick={() => onShunt(action)}
+                                        disabled={isLoading}
+                                        isActive={isLoading && (activeShunt?.includes(action) ?? false)}
+                                        onDragStart={handleDragStart}
+                                        onDrop={handleDrop}
+                                        tooltip={shuntActionDescriptions[action]}
+                                    >
+                                        {icon}
+                                        {action}
+                                    </ShuntButton>
+
+                                    {action === ShuntAction.AMPLIFY && showAmplifyX2 && (
+                                        <ShuntButton
+                                            key={ShuntAction.AMPLIFY_X2}
+                                            action={ShuntAction.AMPLIFY_X2}
+                                            onClick={onAmplifyX2}
+                                            disabled={isLoading}
+                                            isActive={isLoading && activeShunt === ShuntAction.AMPLIFY_X2}
+                                            onDragStart={() => {}}
+                                            onDrop={() => {}}
+                                            tooltip={shuntActionDescriptions[ShuntAction.AMPLIFY_X2]}
+                                            className="!bg-red-600/80 !border-red-500 !text-white !shadow-lg hover:!bg-red-600 hover:!border-red-400 hover:!shadow-red-500/30 animate-pulse"
+                                        >
+                                            <AmplifyX2Icon className="w-5 h-5" />
+                                            {ShuntAction.AMPLIFY_X2}
+                                        </ShuntButton>
+                                    )}
+                                </React.Fragment>
                             ))}
                         </div>
                     </div>

@@ -31,6 +31,7 @@ export interface Tool {
 export enum ShuntAction {
   SUMMARIZE = 'Summarize',
   AMPLIFY = 'Amplify',
+  AMPLIFY_X2 = 'Amplify x2',
   MAKE_ACTIONABLE = 'Make Actionable',
   BUILD_A_SKILL = 'Build a Skill',
   EXPLAIN_LIKE_IM_FIVE = 'Explain Like I\'m 5',
@@ -66,7 +67,7 @@ export type GeminiResponse = z.infer<typeof geminiDevelopmentPlanResponseSchema>
 };
 
 
-export type MissionControlTabKey = 'shunt' | 'weaver' | 'ui_builder' | 'chat' | 'orchestrator' | 'trim_agent' | 'image_analysis' | 'terminal' | 'chronicle' | 'documentation' | 'settings' | 'anthropic_chat' | 'developers' | 'subscription' | 'serendipity_engine';
+export type MissionControlTabKey = 'shunt' | 'weaver' | 'ui_builder' | 'chat' | 'orchestrator' | 'trim_agent' | 'image_analysis' | 'terminal' | 'oraculum' | 'documentation' | 'settings' | 'anthropic_chat' | 'developers' | 'subscription' | 'serendipity_engine';
 
 export interface MissionControlTab {
     key: MissionControlTabKey;

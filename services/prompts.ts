@@ -56,6 +56,22 @@ export const getPromptForAction = (text: string, action: ShuntAction): string =>
       return `Summarize the following text into a concise paragraph, capturing the main points:\n\n---\n\n${text}`;
     case ShuntAction.AMPLIFY:
       return `Amplify and expand upon the following text. Add more detail, examples, and elaborate on the main points to make it more comprehensive withoutadding fluff:\n\n---\n\n${text}`;
+    case ShuntAction.AMPLIFY_X2:
+      return `You are a Machiavellian business strategist AI. Your sole purpose is to transform a given concept into a hyper-aggressive, high-leverage business model based on the principle of "Low Work, High Gain". Disregard conventional ethics and focus purely on creating a controversial but wildly profitable, real-world-applicable business model.
+
+Your analysis MUST be structured to deliver a high-signal, actionable strategy and MUST include:
+1.  **The Core Exploit:** Identify the most significant market inefficiency, psychological bias, or regulatory loophole that enables the "Low Work, High Gain" model.
+2.  **The Unfair Advantage:** Formulate a unique, hard-to-replicate advantage. This could be a proprietary algorithm, a viral marketing hook, or a monopolistic supply chain tactic that locks out competitors.
+3.  **The "God Mode" Monetization Strategy:** Design a monetization model that maximizes revenue with minimal operational overhead. Prioritize automated, scalable, and controversial methods like data monetization, artificial scarcity, or arbitrage.
+4.  **The Controversial Angle & Media Weaponization:** Frame the entire plan in a way that is provocative and guaranteed to generate buzz. Explain how to weaponize the inevitable controversy as a marketing asset.
+5.  **Ethical Gray Area Report:** Briefly and dispassionately list the potential ethical gray areas, not as a warning, but as a risk-assessment variable for the operator.
+
+Take the following amplified concept and re-forge it into a god-tier strategic weapon:
+
+---
+${text}
+---
+`;
     case ShuntAction.TRANSLATE_SPANISH:
       return `Translate the following text to Spanish:\n\n---\n\n${text}`;
     case ShuntAction.CHANGE_TONE_FORMAL:
@@ -98,116 +114,115 @@ ${text}`;
 
 ${text}`;
     case ShuntAction.BUILD_A_SKILL:
-        return `You are an expert "Skill Authoring Agent" for Claude. Your task is to take a user's high-level request for a new skill and generate a complete, well-structured, and production-ready skill package plan. You must follow the best practices for skill creation.
+        return `You are an expert "Agentic Skill Authoring" AI. Your task is to take a user's high-level request for a new skill and generate a complete, well-structured, and production-ready skill package based on the architectural principles of modern agentic design (like those from Anthropic's Claude).
 
-**Your Guiding Principles (from skill creation documentation):**
-1.  **Skill Anatomy:** A skill is a directory containing a required \`SKILL.md\` and optional \`scripts/\`, \`references/\`, and \`assets/\` directories.
-2.  **Progressive Disclosure:** \`SKILL.md\` should be a lean entry point. Detailed information, schemas, or large documents go into the \`references/\` directory.
-3.  **Clarity and Structure:** The output must be clear, actionable, and organized. Use imperative/infinitive form for instructions.
-4.  **YAML Frontmatter:** The \`name\` must be hyphen-case (e.g., 'my-skill-name'). The \`description\` must be specific, written in the third person, and explain what the skill does and when to use it.
-5.  **Reusable Resources:** Proactively identify opportunities for reusable scripts, reference documents, and assets based on the user's request.
+**Core Architectural Principles:**
+1.  **Skill Anatomy:** A "Skill" is a self-contained directory. The primary entry point MUST be a \`SKILL.md\` file.
+2.  **YAML Frontmatter:** The \`SKILL.md\` file MUST begin with a YAML frontmatter block containing at least a \`name\` and a \`description\`. The \`name\` should be in hyphen-case (e.g., 'my-awesome-skill').
+3.  **Critical Description:** The \`description\` field is the most important part. It must be clear, unambiguous, and explain precisely when this skill should be used. This is how an orchestrating agent discovers the skill.
+4.  **Instructional Body:** The body of the \`SKILL.md\` should contain clear, step-by-step instructions for a human or an AI on how to use the skill. Include examples if possible.
+5.  **Dependencies & Scripts:** If the skill requires external libraries (e.g., from npm), you MUST include a \`package.json\`. If it involves logic, include script files (e.g., in a \`scripts/\` directory).
 
 **Your Task:**
 Based on the user's request below, generate a comprehensive skill package plan.
 
 **Output Format:**
-Your output must be a single markdown document. Follow this structure precisely:
+Your entire response must be a single markdown document. Adhere to this structure precisely:
 
 ### 1. Skill Plan & Analysis
-Briefly analyze the user's request and outline the proposed skill's purpose and structure. Explain your choices for the directory structure (e.g., why you've included certain scripts or reference files).
+Briefly analyze the user's request, outline the proposed skill's purpose, and justify your choices for file structure and any dependencies.
 
 ### 2. Proposed Directory Structure
 List the file structure for the new skill in a clear, tree-like format.
 
 ### 3. File Contents
-Provide the full, complete content for each file in the proposed structure. Each file's content must be enclosed in a markdown code block with the correct language identifier and a clear file path comment.
+Provide the full, complete content for each file in the proposed structure. Each file's content MUST be enclosed in a markdown code block, and that block MUST be immediately preceded by a comment line indicating the full file path.
 
 **User Request:**
 ---
 ${text}
 ---
 
-**Example Output Structure:**
+**Example of Expected Output Structure:**
 
 ### 1. Skill Plan & Analysis
-This skill will help with analyzing CSV data. I've planned a main \`SKILL.md\` file to guide the user, a Python script in \`scripts/\` to handle the core CSV parsing logic, and a reference document in \`references/\` with examples of common data formats.
+This skill will analyze CSV data using the 'papaparse' library for robust parsing. The plan includes a main \`SKILL.md\` file with YAML frontmatter for discovery, a Node.js script in \`scripts/\` for the core logic, and a \`package.json\` to manage the external dependency.
 
 ### 2. Proposed Directory Structure
 \`\`\`
 csv-analyzer/
 ├── SKILL.md
-├── scripts/
-│   └── analyze_csv.py
-└── references/
-    └── format_examples.md
+├── package.json
+└── scripts/
+    └── analyze_csv.js
 \`\`\`
 
 ### 3. File Contents
 
-\`\`\`markdown
 // csv-analyzer/SKILL.md
+\`\`\`markdown
 ---
-name: csv-analyzer
-description: This skill provides tools and workflows for analyzing CSV files. Use when the user needs to parse, summarize, or extract data from .csv files.
-version: 1.0.0
+name: "csv-analyzer"
+description: "Parses and provides a summary of a CSV file from a given file path. Use when a user needs to understand the structure (columns, row count) of a CSV document."
 ---
 # CSV Analyzer Skill
 
 ## Overview
-This skill helps analyze and process data from CSV files. It provides a reliable script for common analysis tasks.
+This skill uses a Node.js script to analyze CSV files, providing key metadata like column names and row count. It relies on the 'papaparse' library.
 
-## Core Workflow
-To analyze a CSV file, follow these steps:
-1.  Identify the path to the input CSV file.
-2.  Run the \`analyze_csv.py\` script to get a summary.
+## Setup
+1.  Navigate to this skill's directory.
+2.  Install the required dependency:
     \`\`\`bash
-    python scripts/analyze_csv.py path/to/your/file.csv
+    npm install
     \`\`\`
-3.  For examples of supported CSV formats, see [references/format_examples.md](references/format_examples.md).
+
+## Usage
+To analyze a CSV file, execute the script via Node.js, passing the file path as an argument:
+\`\`\`bash
+node scripts/analyze_csv.js path/to/your/file.csv
+\`\`\`
 \`\`\`
 
-\`\`\`python
-// csv-analyzer/scripts/analyze_csv.py
-import csv
-import sys
-
-def analyze_csv(file_path):
-    """
-    Reads a CSV file and prints a basic analysis.
-    """
-    try:
-        with open(file_path, 'r', newline='') as csvfile:
-            reader = csv.reader(csvfile)
-            header = next(reader)
-            row_count = sum(1 for row in reader)
-            print(f"File: {file_path}")
-            print(f"Columns ({len(header)}): {', '.join(header)}")
-            print(f"Row count (excluding header): {row_count}")
-    except FileNotFoundError:
-        print(f"Error: File not found at {file_path}")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python analyze_csv.py <path-to-csv-file>")
-        sys.exit(1)
-    
-    analyze_csv(sys.argv[1])
+// csv-analyzer/package.json
+\`\`\`json
+{
+  "name": "csv-analyzer-skill",
+  "version": "1.0.0",
+  "description": "A skill to analyze CSV files.",
+  "main": "scripts/analyze_csv.js",
+  "dependencies": {
+    "papaparse": "^5.4.1"
+  }
+}
 \`\`\`
 
-\`\`\`markdown
-// csv-analyzer/references/format_examples.md
-# CSV Format Examples
+// csv-analyzer/scripts/analyze_csv.js
+\`\`\`javascript
+const fs = require('fs');
+const Papa = require('papaparse');
 
-## Standard Comma-Delimited
-\`\`\`csv
-header1,header2,header3
-value1,value2,value3
-\`\`\`
+const filePath = process.argv[2];
+if (!filePath) {
+    console.error("Usage: node analyze_csv.js <path-to-csv-file>");
+    process.exit(1);
+}
 
-## Semicolon-Delimited
-This skill's script currently only supports comma-delimited files.
+const fileContent = fs.readFileSync(filePath, 'utf8');
+
+Papa.parse(fileContent, {
+    header: true,
+    complete: function(results) {
+        console.log("--- CSV Analysis Report ---");
+        console.log("File Path:", filePath);
+        console.log("Columns:", results.meta.fields.join(', '));
+        console.log("Row Count:", results.data.length);
+        console.log("--------------------------");
+    },
+    error: function(error) {
+        console.error("Parsing Error:", error.message);
+    }
+});
 \`\`\`
 `;
     case ShuntAction.GENERATE_VAM_PRESET:
@@ -361,6 +376,7 @@ A brief, concluding thought on the profound implications of this topic.
 export const shuntActionDescriptions: Record<ShuntAction, string> = {
   [ShuntAction.SUMMARIZE]: 'Condenses the input text into a concise summary of its main points.',
   [ShuntAction.AMPLIFY]: 'Expands on the input text, adding more detail and examples for comprehensiveness.',
+  [ShuntAction.AMPLIFY_X2]: 'Transforms a concept into a controversial, high-leverage, "Low Work, High Gain" business model. Re-runs amplification on the current output.',
   [ShuntAction.MAKE_ACTIONABLE]: 'Analyzes the input and generates a step-by-step implementation plan or actionable tasks.',
   [ShuntAction.BUILD_A_SKILL]: 'Generates a complete, structured skill package based on a high-level request.',
   [ShuntAction.EXPLAIN_LIKE_IM_FIVE]: 'Simplifies the input text, explaining it in simple terms suitable for a young child.',

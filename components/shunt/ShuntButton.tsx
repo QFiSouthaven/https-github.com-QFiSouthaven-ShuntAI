@@ -8,10 +8,11 @@ interface ShuntButtonProps {
   disabled: boolean;
   isActive: boolean;
   children: React.ReactNode;
-  action: ShuntAction;
+  action: ShuntAction | string;
   onDragStart: (e: React.DragEvent<HTMLButtonElement>, action: ShuntAction) => void;
   onDrop: (e: React.DragEvent<HTMLButtonElement>, action: ShuntAction) => void;
   tooltip: string;
+  className?: string;
 }
 
 const ShuntButton: React.FC<ShuntButtonProps> = ({ 
@@ -23,6 +24,7 @@ const ShuntButton: React.FC<ShuntButtonProps> = ({
   onDragStart,
   onDrop,
   tooltip,
+  className = '',
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -46,7 +48,7 @@ const ShuntButton: React.FC<ShuntButtonProps> = ({
   const handleDrop = (e: React.DragEvent<HTMLButtonElement>) => {
     e.preventDefault();
     setIsDragOver(false);
-    onDrop(e, action);
+    onDrop(e, action as ShuntAction);
   };
 
   const [icon, text] = React.Children.toArray(children);
@@ -55,8 +57,8 @@ const ShuntButton: React.FC<ShuntButtonProps> = ({
     <button
       onClick={onClick}
       disabled={disabled}
-      draggable={!disabled}
-      onDragStart={(e) => onDragStart(e, action)}
+      draggable={!disabled && action in ShuntAction}
+      onDragStart={(e) => onDragStart(e, action as ShuntAction)}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onDragEnter={handleDragEnter}
@@ -74,6 +76,7 @@ const ShuntButton: React.FC<ShuntButtonProps> = ({
           isDragOver ? 'ring-2 ring-fuchsia-400 ring-offset-2 ring-offset-gray-800' : ''
         }
         disabled:cursor-not-allowed
+        ${className}
       `}
     >
       {isActive ? <Loader /> : icon}

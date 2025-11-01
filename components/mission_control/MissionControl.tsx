@@ -3,7 +3,7 @@ import React, { useState, useCallback, lazy, Suspense } from 'react';
 import {
     SparklesIcon, BrainIcon, BookIcon, HistoryIcon, ServerIcon,
     ChatBubbleLeftRightIcon, PhotoIcon, DocumentIcon, Cog6ToothIcon, BoltIcon, CodeIcon, StarIcon,
-    TerminalIcon, ViewfinderCircleIcon
+    TerminalIcon, ViewfinderCircleIcon, GlobeAltIcon
 } from '../icons';
 import { MissionControlTab, MissionControlTabKey } from '../../types';
 import Loader from '../Loader';
@@ -23,7 +23,7 @@ const Chat = lazy(() => import('../chat/Chat'));
 const Orchestrator = lazy(() => import('./Orchestrator'));
 const TrimAgent = lazy(() => import('../trim_agent/TrimAgent'));
 const ImageAnalysis = lazy(() => import('../image_analysis/ImageAnalysis'));
-const Chronicle = lazy(() => import('../chronicle/Chronicle'));
+const Oraculum = lazy(() => import('../oraculum/Oraculum'));
 const Developers = lazy(() => import('../developers/Developers'));
 const Subscription = lazy(() => import('../subscription/Subscription'));
 const Documentation = lazy(() => import('../documentation/Documentation'));
@@ -39,7 +39,7 @@ const tabs: MissionControlTab[] = [
     { key: 'trim_agent', label: 'TRIM Agent', icon: <BoltIcon className="w-5 h-5" />, component: TrimAgent },
     { key: 'image_analysis', label: 'Image Analysis', icon: <PhotoIcon className="w-5 h-5" />, component: ImageAnalysis },
     { key: 'terminal', label: 'Terminal', icon: <TerminalIcon className="w-5 h-5" />, component: Terminal },
-    { key: 'chronicle', label: 'Chronicle', icon: <HistoryIcon className="w-5 h-5" />, component: Chronicle },
+    { key: 'oraculum', label: 'Oraculum', icon: <GlobeAltIcon className="w-5 h-5" />, component: Oraculum },
     { key: 'developers', label: 'Developers', icon: <CodeIcon className="w-5 h-5" />, component: Developers },
     { key: 'subscription', label: 'Subscription', icon: <StarIcon className="w-5 h-5" />, component: Subscription },
     { key: 'documentation', label: 'Documentation', icon: <DocumentIcon className="w-5 h-5" />, component: Documentation },
